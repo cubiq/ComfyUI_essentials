@@ -10,6 +10,7 @@ Essential nodes that are weirdly missing from ComfyUI core. With few exceptions 
 - Image Flip
 - Image Desaturate
 - Image Posterize
+- Image Contrast Adaptive Sharpening
 - Mask Blur
 - Mask Flip
 - Mask Grow / Shrink (same as Mask grow but adds shrink)
