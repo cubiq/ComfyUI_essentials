@@ -327,6 +327,7 @@ def max_(tensor_list):
     mx = x.max(axis=0)[0]
     return mx
 
+# From https://github.com/Jamy-L/Pytorch-Contrast-Adaptive-Sharpening/
 class ImageCAS:
     @classmethod
     def INPUT_TYPES(cls):
@@ -361,7 +362,7 @@ class ImageCAS:
         
         diag = (a, c, g, i)
         mn2 = min_(diag)
-        mx2 = max_(diag)    
+        mx2 = max_(diag)
         mx = mx + mx2
         mn = mn + mn2
         
