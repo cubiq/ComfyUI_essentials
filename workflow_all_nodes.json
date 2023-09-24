@@ -1,20 +1,223 @@
 {
-  "last_node_id": 26,
-  "last_link_id": 21,
+  "last_node_id": 37,
+  "last_link_id": 49,
   "nodes": [
+    {
+      "id": 9,
+      "type": "ConsoleDebug+",
+      "pos": [
+        720,
+        140
+      ],
+      "size": {
+        "0": 210,
+        "1": 60
+      },
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConsoleDebug+"
+      },
+      "widgets_values": [
+        "Height:"
+      ]
+    },
+    {
+      "id": 28,
+      "type": "PreviewImage",
+      "pos": [
+        860,
+        1180
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 23
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 11,
+      "type": "PreviewImage",
+      "pos": [
+        1100,
+        450
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 10
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 12,
+      "type": "PreviewImage",
+      "pos": [
+        860,
+        580
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 11
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 14,
+      "type": "PreviewImage",
+      "pos": [
+        860,
+        880
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 13
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 21,
+      "type": "MaskPreview+",
+      "pos": [
+        2340,
+        240
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mask",
+          "type": "MASK",
+          "link": 18
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MaskPreview+"
+      }
+    },
+    {
+      "id": 22,
+      "type": "MaskPreview+",
+      "pos": [
+        2100,
+        390
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mask",
+          "type": "MASK",
+          "link": 17
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MaskPreview+"
+      }
+    },
+    {
+      "id": 18,
+      "type": "MaskPreview+",
+      "pos": [
+        2100,
+        90
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mask",
+          "type": "MASK",
+          "link": 19
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MaskPreview+"
+      }
+    },
     {
       "id": 1,
       "type": "GetImageSize+",
       "pos": [
-        420,
-        200
+        450,
+        80
       ],
       "size": {
         "0": 210,
         "1": 46
       },
       "flags": {},
-      "order": 3,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
@@ -48,46 +251,185 @@
       }
     },
     {
-      "id": 9,
+      "id": 8,
       "type": "ConsoleDebug+",
       "pos": [
-        750,
-        220
+        720,
+        40
       ],
       "size": {
-        "0": 315,
-        "1": 58
+        "0": 210,
+        "1": 60
       },
       "flags": {},
-      "order": 14,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
           "name": "value",
           "type": "*",
-          "link": 3
+          "link": 2
         }
       ],
       "properties": {
         "Node name for S&R": "ConsoleDebug+"
       },
       "widgets_values": [
-        "Height:"
+        "Width:"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "PreviewImage",
+      "pos": [
+        860,
+        280
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 9
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 20,
+      "type": "LoadImageMask",
+      "pos": [
+        1400,
+        260
+      ],
+      "size": {
+        "0": 220.70516967773438,
+        "1": 318
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": [
+            14,
+            15,
+            16
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImageMask"
+      },
+      "widgets_values": [
+        "cwf_inpaint_example_mask.png",
+        "alpha",
+        "image"
+      ]
+    },
+    {
+      "id": 36,
+      "type": "SimpleMath+",
+      "pos": [
+        1650,
+        780
+      ],
+      "size": {
+        "0": 210,
+        "1": 80
+      },
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "a",
+          "type": "INT,FLOAT",
+          "link": 44
+        },
+        {
+          "name": "b",
+          "type": "INT,FLOAT",
+          "link": 45
+        }
+      ],
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            46
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SimpleMath+"
+      },
+      "widgets_values": [
+        "a*b"
+      ]
+    },
+    {
+      "id": 23,
+      "type": "ConsoleDebug+",
+      "pos": [
+        1920,
+        780
+      ],
+      "size": {
+        "0": 210,
+        "1": 60
+      },
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 46
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConsoleDebug+"
+      },
+      "widgets_values": [
+        "Value:"
       ]
     },
     {
       "id": 7,
       "type": "LoadImage",
       "pos": [
-        -40,
-        320
+        -90,
+        650
       ],
-      "size": [
-        315,
-        313.99999237060547
-      ],
+      "size": {
+        "0": 315,
+        "1": 314
+      },
       "flags": {},
-      "order": 0,
+      "order": 1,
       "mode": 0,
       "outputs": [
         {
@@ -98,8 +440,9 @@
             4,
             5,
             6,
-            7,
-            8
+            8,
+            22,
+            48
           ],
           "shape": 3,
           "slot_index": 0
@@ -127,11 +470,11 @@
         560
       ],
       "size": {
-        "0": 315,
+        "0": 310,
         "1": 194
       },
       "flags": {},
-      "order": 5,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
@@ -153,8 +496,9 @@
         {
           "name": "x",
           "type": "INT",
-          "links": null,
-          "shape": 3
+          "links": [],
+          "shape": 3,
+          "slot_index": 1
         },
         {
           "name": "y",
@@ -175,24 +519,24 @@
       ]
     },
     {
-      "id": 5,
-      "type": "ImageDesaturate+",
+      "id": 2,
+      "type": "ImageResize+",
       "pos": [
-        440,
-        920
+        430,
+        340
       ],
-      "size": {
-        "0": 210,
-        "1": 26
-      },
+      "size": [
+        310,
+        170
+      ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 7
+          "link": 4
         }
       ],
       "outputs": [
@@ -200,79 +544,53 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            12
+            9
           ],
           "shape": 3,
           "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ImageDesaturate+"
-      }
-    },
-    {
-      "id": 10,
-      "type": "PreviewImage",
-      "pos": [
-        1090,
-        330
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "inputs": [
+        },
         {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 9
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
-      "id": 11,
-      "type": "PreviewImage",
-      "pos": [
-        830,
-        540
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
+          "name": "width",
+          "type": "INT",
+          "links": [
+            44
+          ],
+          "shape": 3,
+          "slot_index": 1
+        },
         {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 10
+          "name": "height",
+          "type": "INT",
+          "links": [
+            45
+          ],
+          "shape": 3,
+          "slot_index": 2
         }
       ],
       "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
+        "Node name for S&R": "ImageResize+"
+      },
+      "widgets_values": [
+        256,
+        64,
+        "lanczos",
+        true
+      ]
     },
     {
       "id": 4,
       "type": "ImageFlip+",
       "pos": [
-        440,
-        810
+        430,
+        800
       ],
       "size": {
-        "0": 315,
-        "1": 58
+        "0": 310,
+        "1": 60
       },
       "flags": {},
-      "order": 6,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -307,11 +625,11 @@
         1000
       ],
       "size": {
-        "0": 315,
-        "1": 58
+        "0": 310,
+        "1": 60
       },
       "flags": {},
-      "order": 8,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -335,133 +653,61 @@
         "Node name for S&R": "ImagePosterize+"
       },
       "widgets_values": [
-        0.55
+        0.5
       ]
     },
     {
-      "id": 14,
-      "type": "PreviewImage",
+      "id": 27,
+      "type": "ImageCASharpening+",
       "pos": [
-        870,
-        1160
+        430,
+        1110
       ],
-      "size": [
-        210,
-        246
-      ],
+      "size": {
+        "0": 310.79998779296875,
+        "1": 60
+      },
       "flags": {},
-      "order": 19,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
-          "name": "images",
+          "name": "image",
           "type": "IMAGE",
-          "link": 13
+          "link": 22
         }
       ],
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
-      "id": 13,
-      "type": "PreviewImage",
-      "pos": [
-        870,
-        870
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 18,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 12
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
-      "id": 12,
-      "type": "PreviewImage",
-      "pos": [
-        1130,
-        780
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 17,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 11
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
-      "id": 20,
-      "type": "LoadImageMask",
-      "pos": [
-        1490,
-        390
-      ],
-      "size": [
-        220.70517121393095,
-        240.71892144642402
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
       "outputs": [
         {
-          "name": "MASK",
-          "type": "MASK",
+          "name": "IMAGE",
+          "type": "IMAGE",
           "links": [
-            14,
-            15,
-            16
+            23
           ],
           "shape": 3,
           "slot_index": 0
         }
       ],
       "properties": {
-        "Node name for S&R": "LoadImageMask"
+        "Node name for S&R": "ImageCASharpening+"
       },
       "widgets_values": [
-        "cwf_inpaint_example_mask.png",
-        "alpha",
-        "image"
+        0.8
       ]
     },
     {
       "id": 15,
       "type": "MaskBlur+",
       "pos": [
-        1770,
-        250
+        1690,
+        130
       ],
       "size": {
-        "0": 315,
+        "0": 310,
         "1": 82
       },
       "flags": {},
-      "order": 9,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -485,7 +731,7 @@
         "Node name for S&R": "MaskBlur+"
       },
       "widgets_values": [
-        44,
+        45,
         28.5
       ]
     },
@@ -493,15 +739,15 @@
       "id": 16,
       "type": "MaskFlip+",
       "pos": [
-        1770,
-        390
+        1690,
+        270
       ],
       "size": {
-        "0": 315,
-        "1": 58
+        "0": 310,
+        "1": 60
       },
       "flags": {},
-      "order": 10,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
@@ -529,68 +775,18 @@
       ]
     },
     {
-      "id": 21,
-      "type": "MaskPreview+",
-      "pos": [
-        2430,
-        320
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 21,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "mask",
-          "type": "MASK",
-          "link": 18
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MaskPreview+"
-      }
-    },
-    {
-      "id": 22,
-      "type": "MaskPreview+",
-      "pos": [
-        2180,
-        540
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 22,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "mask",
-          "type": "MASK",
-          "link": 17
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MaskPreview+"
-      }
-    },
-    {
       "id": 17,
       "type": "GrowShrinkMask+",
       "pos": [
-        1780,
-        510
+        1690,
+        390
       ],
       "size": {
-        "0": 315,
+        "0": 310,
         "1": 82
       },
       "flags": {},
-      "order": 11,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
@@ -614,29 +810,54 @@
         "Node name for S&R": "GrowShrinkMask+"
       },
       "widgets_values": [
-        -30,
+        -28,
         true
       ]
     },
     {
-      "id": 2,
-      "type": "ImageResize+",
+      "id": 13,
+      "type": "PreviewImage",
       "pos": [
-        420,
-        310
+        1100,
+        760
       ],
       "size": {
-        "0": 315,
-        "1": 194
+        "0": 210,
+        "1": 246
       },
       "flags": {},
-      "order": 4,
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 49
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 37,
+      "type": "ImageDesaturate+",
+      "pos": [
+        500,
+        920
+      ],
+      "size": [
+        190,
+        30
+      ],
+      "flags": {},
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 4
+          "link": 48
         }
       ],
       "outputs": [
@@ -644,215 +865,15 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            9
+            49
           ],
           "shape": 3,
           "slot_index": 0
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": null,
-          "shape": 3,
-          "slot_index": 1
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": null,
-          "shape": 3,
-          "slot_index": 2
         }
       ],
       "properties": {
-        "Node name for S&R": "ImageResize+"
-      },
-      "widgets_values": [
-        768,
-        512,
-        "nearest",
-        true,
-        true
-      ]
-    },
-    {
-      "id": 19,
-      "type": "SimpleMath+",
-      "pos": [
-        1730,
-        1000
-      ],
-      "size": [
-        210,
-        102
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "a",
-          "type": "FLOAT",
-          "link": 20,
-          "widget": {
-            "name": "a",
-            "config": [
-              "FLOAT",
-              {
-                "default": 0,
-                "step": 1
-              }
-            ]
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "INT",
-          "type": "INT",
-          "links": [
-            21
-          ],
-          "shape": 3,
-          "slot_index": 0
-        },
-        {
-          "name": "FLOAT",
-          "type": "FLOAT",
-          "links": null,
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "SimpleMath+"
-      },
-      "widgets_values": [
-        "a*100",
-        0,
-        0
-      ]
-    },
-    {
-      "id": 23,
-      "type": "ConsoleDebug+",
-      "pos": [
-        2020,
-        930
-      ],
-      "size": {
-        "0": 315,
-        "1": 58
-      },
-      "flags": {},
-      "order": 23,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "value",
-          "type": "*",
-          "link": 21
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ConsoleDebug+"
-      },
-      "widgets_values": [
-        "Value:"
-      ]
-    },
-    {
-      "id": 18,
-      "type": "MaskPreview+",
-      "pos": [
-        2180,
-        90
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 20,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "mask",
-          "type": "MASK",
-          "link": 19
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "MaskPreview+"
+        "Node name for S&R": "ImageDesaturate+"
       }
-    },
-    {
-      "id": 8,
-      "type": "ConsoleDebug+",
-      "pos": [
-        700,
-        100
-      ],
-      "size": {
-        "0": 315,
-        "1": 58
-      },
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "value",
-          "type": "*",
-          "link": 2
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ConsoleDebug+"
-      },
-      "widgets_values": [
-        "Width:"
-      ]
-    },
-    {
-      "id": 26,
-      "type": "SimpleMath+",
-      "pos": [
-        1480,
-        840
-      ],
-      "size": [
-        210,
-        126
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "INT",
-          "type": "INT",
-          "links": null,
-          "shape": 3
-        },
-        {
-          "name": "FLOAT",
-          "type": "FLOAT",
-          "links": [
-            20
-          ],
-          "shape": 3,
-          "slot_index": 1
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "SimpleMath+"
-      },
-      "widgets_values": [
-        "100",
-        0,
-        0
-      ]
     }
   ],
   "links": [
@@ -905,14 +926,6 @@
       "IMAGE"
     ],
     [
-      7,
-      7,
-      0,
-      5,
-      0,
-      "IMAGE"
-    ],
-    [
       8,
       7,
       0,
@@ -941,14 +954,6 @@
       4,
       0,
       12,
-      0,
-      "IMAGE"
-    ],
-    [
-      12,
-      5,
-      0,
-      13,
       0,
       "IMAGE"
     ],
@@ -1009,20 +1014,60 @@
       "MASK"
     ],
     [
-      20,
-      26,
-      1,
-      19,
+      22,
+      7,
       0,
-      "FLOAT"
+      27,
+      0,
+      "IMAGE"
     ],
     [
-      21,
-      19,
+      23,
+      27,
+      0,
+      28,
+      0,
+      "IMAGE"
+    ],
+    [
+      44,
+      2,
+      1,
+      36,
+      0,
+      "INT,FLOAT"
+    ],
+    [
+      45,
+      2,
+      2,
+      36,
+      1,
+      "INT,FLOAT"
+    ],
+    [
+      46,
+      36,
       0,
       23,
       0,
       "*"
+    ],
+    [
+      48,
+      7,
+      0,
+      37,
+      0,
+      "IMAGE"
+    ],
+    [
+      49,
+      37,
+      0,
+      13,
+      0,
+      "IMAGE"
     ]
   ],
   "groups": [],
