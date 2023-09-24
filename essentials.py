@@ -39,6 +39,8 @@ class AnyType(str):
         return False
 any = AnyType("*")
 
+EPSILON = 1e-7
+
 class GetImageSize:
     @classmethod
     def INPUT_TYPES(s):
@@ -366,7 +368,7 @@ class ImageCAS:
         mn = mn + mn2
         
         # Computing local weight
-        inv_mx = torch.reciprocal(mx)
+        inv_mx = torch.reciprocal(mx + EPSILON)
         amp = inv_mx * torch.minimum(mn, (2 - mx))
     
         # scaling
@@ -376,7 +378,7 @@ class ImageCAS:
 
         output = ((b + d + f + h)*w + e) * div
         output = output.clamp(0, 1)
-        output = torch.nan_to_num(output)   # what am I doing?!
+        #output = torch.nan_to_num(output)   # what am I doing?!
 
         output = pb(output) 
 

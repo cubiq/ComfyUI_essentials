@@ -10,7 +10,7 @@ Essential nodes that are weirdly missing from ComfyUI core. With few exceptions 
 - Image Flip
 - Image Desaturate
 - Image Posterize
-- Image Contrast Adaptive Sharpening
+- Image Contrast Adaptive Sharpening ([credits](https://github.com/Jamy-L/Pytorch-Contrast-Adaptive-Sharpening))
 - Mask Blur
 - Mask Flip
 - Mask Grow / Shrink (same as Mask grow but adds shrink)
