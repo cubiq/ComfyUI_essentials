@@ -66,7 +66,6 @@ class ImageResize:
                 "height": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, "display": "number" }),
                 "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
                 "keep_proportion": ("BOOLEAN", { "default": False }),
-                "antialias": ("BOOLEAN", { "default": True }),
             }
         }
 
@@ -75,7 +74,7 @@ class ImageResize:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, image, width, height, keep_proportion, interpolation="bicubic", antialias=True):
+    def execute(self, image, width, height, keep_proportion, interpolation="nearest"):
         if keep_proportion is True:
             _, oh, ow, _ = image.shape
             width = ow if width == 0 else width
@@ -367,8 +366,7 @@ class ImageCAS:
         mn = mn + mn2
         
         # Computing local weight
-        inv_mx = torch.reciprocal(mx) # 1/mx
-        
+        inv_mx = torch.reciprocal(mx)
         amp = inv_mx * torch.minimum(mn, (2 - mx))
     
         # scaling
@@ -392,8 +390,8 @@ class SimpleMath:
     def INPUT_TYPES(s):
         return {
             "optional": {
-                "a": ("FLOAT", { "default": 0.0, "step": 1 }),
-                "b": ("FLOAT", { "default": 0.0, "step": 1 }),
+                "a": ("INT,FLOAT", { "default": 0.0, "step": 0.1 }),
+                "b": ("INT,FLOAT", { "default": 0.0, "step": 0.1 }),
             },
             "required": {
                 "value": ("STRING", { "multiline": False, "default": "" }),
