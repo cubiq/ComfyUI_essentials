@@ -126,9 +126,9 @@ class ImageCrop:
                 "image": ("IMAGE",),
                 "width": ("INT", { "default": 256, "min": 0, "max": MAX_RESOLUTION, "step": 8, "display": "number" }),
                 "height": ("INT", { "default": 256, "min": 0, "max": MAX_RESOLUTION, "step": 8, "display": "number" }),
-                "position": (["free", "center", "top-left", "top-center", "top-right", "right-center", "bottom-right", "bottom-center", "bottom-left", "left-center"],),
-                "x": ("INT", { "default": 0, "min": 0, "step": 1, "display": "number" }),
-                "y": ("INT", { "default": 0, "min": 0, "step": 1, "display": "number" }),
+                "position": (["top-left", "top-center", "top-right", "right-center", "bottom-right", "bottom-center", "bottom-left", "left-center", "center"],),
+                "x_offset": ("INT", { "default": 0, "min": -99999, "step": 1, "display": "number" }),
+                "y_offset": ("INT", { "default": 0, "min": -99999, "step": 1, "display": "number" }),
             }
         }
     
@@ -137,17 +137,12 @@ class ImageCrop:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, image, width, height, position, x, y):
+    def execute(self, image, width, height, position, x_offset, y_offset):
         _, oh, ow, _ = image.shape
 
         width = min(ow, width)
         height = min(oh, height)
-        
-        if x+width > ow:
-            width = ow-x
-        if y+height > oh:
-            height = oh-y
-        
+                
         if "center" in position:
             x = round((ow-width) / 2)
             y = round((oh-height) / 2)
@@ -160,7 +155,22 @@ class ImageCrop:
         if "right" in position:
             x = ow-width
         
-        image = image[:, y:y+height, x:x+width, :]
+        x += x_offset
+        y += y_offset
+        
+        x2 = x+width
+        y2 = y+height
+
+        if x2 > ow:
+            x2 = ow
+        if x < 0:
+            x = 0
+        if y2 > oh:
+            y2 = oh
+        if y < 0:
+            y = 0
+
+        image = image[:, y:y2, x:x2, :]
 
         return(image, x, y, )
 

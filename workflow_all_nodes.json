@@ -1,6 +1,6 @@
 {
-  "last_node_id": 37,
-  "last_link_id": 49,
+  "last_node_id": 40,
+  "last_link_id": 58,
   "nodes": [
     {
       "id": 9,
@@ -42,38 +42,13 @@
         "1": 246
       },
       "flags": {},
-      "order": 22,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
           "link": 23
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
-      "id": 11,
-      "type": "PreviewImage",
-      "pos": [
-        1100,
-        450
-      ],
-      "size": {
-        "0": 210,
-        "1": 246
-      },
-      "flags": {},
-      "order": 19,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 10
         }
       ],
       "properties": {
@@ -92,7 +67,7 @@
         "1": 246
       },
       "flags": {},
-      "order": 20,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
@@ -117,7 +92,7 @@
         "1": 246
       },
       "flags": {},
-      "order": 21,
+      "order": 20,
       "mode": 0,
       "inputs": [
         {
@@ -418,117 +393,16 @@
       ]
     },
     {
-      "id": 7,
-      "type": "LoadImage",
-      "pos": [
-        -90,
-        650
-      ],
-      "size": {
-        "0": 315,
-        "1": 314
-      },
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            1,
-            4,
-            5,
-            6,
-            8,
-            22,
-            48
-          ],
-          "shape": 3,
-          "slot_index": 0
-        },
-        {
-          "name": "MASK",
-          "type": "MASK",
-          "links": null,
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadImage"
-      },
-      "widgets_values": [
-        "venere.jpg",
-        "image"
-      ]
-    },
-    {
-      "id": 3,
-      "type": "ImageCrop+",
-      "pos": [
-        430,
-        560
-      ],
-      "size": {
-        "0": 310,
-        "1": 194
-      },
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 5
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            10
-          ],
-          "shape": 3,
-          "slot_index": 0
-        },
-        {
-          "name": "x",
-          "type": "INT",
-          "links": [],
-          "shape": 3,
-          "slot_index": 1
-        },
-        {
-          "name": "y",
-          "type": "INT",
-          "links": null,
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ImageCrop+"
-      },
-      "widgets_values": [
-        256,
-        256,
-        "free",
-        0,
-        0
-      ]
-    },
-    {
       "id": 2,
       "type": "ImageResize+",
       "pos": [
         430,
         340
       ],
-      "size": [
-        310,
-        170
-      ],
+      "size": {
+        "0": 310,
+        "1": 170
+      },
       "flags": {},
       "order": 6,
       "mode": 0,
@@ -590,7 +464,7 @@
         "1": 60
       },
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
@@ -629,7 +503,7 @@
         "1": 60
       },
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -668,7 +542,7 @@
         "1": 60
       },
       "flags": {},
-      "order": 10,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -826,7 +700,7 @@
         "1": 246
       },
       "flags": {},
-      "order": 23,
+      "order": 22,
       "mode": 0,
       "inputs": [
         {
@@ -846,12 +720,12 @@
         500,
         920
       ],
-      "size": [
-        190,
-        30
-      ],
+      "size": {
+        "0": 190,
+        "1": 30
+      },
       "flags": {},
-      "order": 11,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
@@ -874,6 +748,131 @@
       "properties": {
         "Node name for S&R": "ImageDesaturate+"
       }
+    },
+    {
+      "id": 7,
+      "type": "LoadImage",
+      "pos": [
+        -90,
+        650
+      ],
+      "size": {
+        "0": 315,
+        "1": 314
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1,
+            4,
+            6,
+            8,
+            22,
+            48,
+            57
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "venere.jpg",
+        "image"
+      ]
+    },
+    {
+      "id": 11,
+      "type": "PreviewImage",
+      "pos": [
+        1100,
+        450
+      ],
+      "size": {
+        "0": 210,
+        "1": 246
+      },
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 58
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 40,
+      "type": "ImageCrop+",
+      "pos": [
+        430,
+        560
+      ],
+      "size": [
+        310,
+        190
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 57
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            58
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "x",
+          "type": "INT",
+          "links": null,
+          "shape": 3
+        },
+        {
+          "name": "y",
+          "type": "INT",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageCrop+"
+      },
+      "widgets_values": [
+        256,
+        256,
+        "center",
+        0,
+        0
+      ]
     }
   ],
   "links": [
@@ -910,14 +909,6 @@
       "IMAGE"
     ],
     [
-      5,
-      7,
-      0,
-      3,
-      0,
-      "IMAGE"
-    ],
-    [
       6,
       7,
       0,
@@ -938,14 +929,6 @@
       2,
       0,
       10,
-      0,
-      "IMAGE"
-    ],
-    [
-      10,
-      3,
-      0,
-      11,
       0,
       "IMAGE"
     ],
@@ -1066,6 +1049,22 @@
       37,
       0,
       13,
+      0,
+      "IMAGE"
+    ],
+    [
+      57,
+      7,
+      0,
+      40,
+      0,
+      "IMAGE"
+    ],
+    [
+      58,
+      40,
+      0,
+      11,
       0,
       "IMAGE"
     ]
