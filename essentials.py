@@ -292,40 +292,6 @@ class MaskPreview(SaveImage):
 
         return( results )
 
-class GrowShrinkMask:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "mask": ("MASK",),
-                "amount": ("INT", {"default": 0, "min": -MAX_RESOLUTION, "max": MAX_RESOLUTION, "step": 1}),
-                "tapered_corners": ("BOOLEAN", {"default": True}),
-            },
-        }
-
-    RETURN_TYPES = ("MASK",)    
-    CATEGORY = "essentials"
-    FUNCTION = "execute"
-
-    def execute(self, mask, amount, tapered_corners):
-        c = 0 if tapered_corners else 1
-        kernel = np.array([[c, 1, c],
-                           [1, 1, 1],
-                           [c, 1, c]])
-        output = mask.numpy().copy()
-        if amount < 0:
-            amount = -amount
-            grey_action = grey_erosion
-        else:
-            grey_action = grey_dilation
-        
-        while amount > 0:
-            output = grey_action(output, footprint=kernel)
-            amount -= 1
-        output = torch.from_numpy(output)
-
-        return (output,)
-
 def min_(tensor_list):
     # return the element-wise min of the tensor list.
     x = torch.stack(tensor_list)
@@ -476,7 +442,6 @@ NODE_CLASS_MAPPINGS = {
 
     "MaskBlur+": MaskBlur,
     "MaskFlip+": MaskFlip,
-    "GrowShrinkMask+": GrowShrinkMask,
     "MaskPreview+": MaskPreview,
 
     "SimpleMath+": SimpleMath,
@@ -496,7 +461,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
-    "GrowShrinkMask+": "🔧 Mask Grow/Shrink",
     "MaskPreview+": "🔧 Mask Preview",
 
     "SimpleMath+": "🔧 Simple Math",

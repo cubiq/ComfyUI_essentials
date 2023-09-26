@@ -13,7 +13,7 @@ Essential nodes that are weirdly missing from ComfyUI core. With few exceptions 
 - Image Contrast Adaptive Sharpening ([credits](https://github.com/Jamy-L/Pytorch-Contrast-Adaptive-Sharpening))
 - Mask Blur
 - Mask Flip
-- Mask Grow / Shrink (same as Mask grow but adds shrink)
+- ~~Mask Grow / Shrink (same as Mask grow but adds shrink)~~ (this was recently added in the official repo)
 - Mask Preview
 - Simple Math
 - Console Debug (outputs any input to console)
