@@ -39,7 +39,7 @@ class AnyType(str):
         return False
 any = AnyType("*")
 
-EPSILON = 1e-7
+EPSILON = 1e-5
 
 class GetImageSize:
     @classmethod
@@ -403,6 +403,26 @@ class SimpleMath:
 
         return (round(result), result, )
 
+class ModelCompile(SaveImage):  
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "fullgraph": ("BOOLEAN", { "default": False }),
+                "dynamic": ("BOOLEAN", { "default": False }),
+                "mode": (["default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"],),
+            },
+        }
+    
+    RETURN_TYPES = ("MODEL", )
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, model, fullgraph, dynamic, mode):
+        model.model.diffusion_model = torch.compile(model.model.diffusion_model, dynamic=dynamic, fullgraph=fullgraph, mode=mode)
+        return( model, )
+
 class ConsoleDebug:
     def __init__(self):
         pass
@@ -446,6 +466,8 @@ NODE_CLASS_MAPPINGS = {
 
     "SimpleMath+": SimpleMath,
     "ConsoleDebug+": ConsoleDebug,
+
+    "ModelCompile+": ModelCompile
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -465,4 +487,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
     "SimpleMath+": "🔧 Simple Math",
     "ConsoleDebug+": "🔧 Console Debug",
+
+    "ModelCompile": "🔧 Compile Model",
 }
