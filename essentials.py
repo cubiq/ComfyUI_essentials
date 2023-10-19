@@ -403,7 +403,7 @@ class SimpleMath:
 
         return (round(result), result, )
 
-class ModelCompile(SaveImage):  
+class ModelCompile():  
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -467,7 +467,7 @@ NODE_CLASS_MAPPINGS = {
     "SimpleMath+": SimpleMath,
     "ConsoleDebug+": ConsoleDebug,
 
-    "ModelCompile+": ModelCompile
+    "ModelCompile+": ModelCompile,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
