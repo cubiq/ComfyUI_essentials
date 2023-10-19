@@ -488,5 +488,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "SimpleMath+": "🔧 Simple Math",
     "ConsoleDebug+": "🔧 Console Debug",
 
-    "ModelCompile": "🔧 Compile Model",
+    "ModelCompile+": "🔧 Compile Model",
 }
