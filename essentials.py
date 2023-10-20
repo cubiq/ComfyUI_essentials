@@ -420,6 +420,7 @@ class ModelCompile():
     CATEGORY = "essentials"
 
     def execute(self, model, fullgraph, dynamic, mode):
+        torch._dynamo.config.suppress_errors = True
         model.model.diffusion_model = torch.compile(model.model.diffusion_model, dynamic=dynamic, fullgraph=fullgraph, mode=mode)
         return( model, )
 
