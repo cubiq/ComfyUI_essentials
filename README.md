@@ -10,14 +10,15 @@ Essential nodes that are weirdly missing from ComfyUI core. With few exceptions 
 - Image Flip
 - Image Desaturate
 - Image Posterize
-- Image Contrast Adaptive Sharpening ([credits](https://github.com/Jamy-L/Pytorch-Contrast-Adaptive-Sharpening))
+- Image Contrast Adaptive Sharpening
+- Image Enhance Difference
 - Mask Blur
 - Mask Flip
 - ~~Mask Grow / Shrink (same as Mask grow but adds shrink)~~ (this was recently added in the official repo)
 - Mask Preview
 - Simple Math
 - Console Debug (outputs any input to console)
-
+- Model Compile, will hurt your feelings. It basically compiles the model with torch.compile. It takes a few minutes to compile but generation is faster. Only works on Linux and Mac (maybe WLS I dunno)
 - TODO: Mask Save
 - TODO: documentation
 

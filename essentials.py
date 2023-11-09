@@ -219,6 +219,39 @@ class ImagePosterize:
 
         return(image,)
 
+class ImageEnhanceDifference:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image1": ("IMAGE",),
+                "image2": ("IMAGE",),
+                "exponent": ("FLOAT", { "default": 0.50, "min": 0.00, "max": 1.00, "step": 0.05, "display": "number" }),
+            }
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image1, image2, exponent):
+        if image1.shape != image2.shape:
+            image2 = p(image2)
+            image2 = comfy.utils.common_upscale(image2, image1.shape[2], image1.shape[1], upscale_method='bicubic', crop='center')
+            image2 = pb(image2)
+
+        diff_image = image1 - image2
+
+        #diff_image = torch.where(diff_image > 0, diff_image+0.05, diff_image)
+        diff_image = torch.pow(diff_image, exponent)
+        #image2 = p(image2)
+        #diff_image = T.functional.equalize(diff_image)
+        #image2 = pb(image2)
+
+        diff_image = torch.clamp(diff_image, 0, 1)
+
+        return(diff_image,)
+
 class MaskFlip:
     @classmethod
     def INPUT_TYPES(s):
@@ -460,6 +493,7 @@ NODE_CLASS_MAPPINGS = {
     "ImageDesaturate+": ImageDesaturate,
     "ImagePosterize+": ImagePosterize,
     "ImageCASharpening+": ImageCAS,
+    "ImageEnhanceDifference+": ImageEnhanceDifference,
 
     "MaskBlur+": MaskBlur,
     "MaskFlip+": MaskFlip,
@@ -481,6 +515,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageDesaturate+": "🔧 Image Desaturate",
     "ImagePosterize+": "🔧 Image Posterize",
     "ImageCASharpening+": "🔧 Image Contrast Adaptive Sharpening",
+    "ImageEnhanceDifference+": "🔧 Image Enhance Difference",
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
