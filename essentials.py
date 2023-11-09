@@ -241,13 +241,7 @@ class ImageEnhanceDifference:
             image2 = pb(image2)
 
         diff_image = image1 - image2
-
-        #diff_image = torch.where(diff_image > 0, diff_image+0.05, diff_image)
         diff_image = torch.pow(diff_image, exponent)
-        #image2 = p(image2)
-        #diff_image = T.functional.equalize(diff_image)
-        #image2 = pb(image2)
-
         diff_image = torch.clamp(diff_image, 0, 1)
 
         return(diff_image,)
