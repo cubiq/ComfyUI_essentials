@@ -302,6 +302,7 @@ class MaskPreview(SaveImage):
         self.output_dir = folder_paths.get_temp_directory()
         self.type = "temp"
         self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
+        self.compress_level = 4
     
     @classmethod
     def INPUT_TYPES(s):
@@ -447,9 +448,10 @@ class ModelCompile():
     CATEGORY = "essentials"
 
     def execute(self, model, fullgraph, dynamic, mode):
+        work_model = model.clone()
         torch._dynamo.config.suppress_errors = True
-        model.model.diffusion_model = torch.compile(model.model.diffusion_model, dynamic=dynamic, fullgraph=fullgraph, mode=mode)
-        return( model, )
+        work_model.model.diffusion_model = torch.compile(work_model.model.diffusion_model, dynamic=dynamic, fullgraph=fullgraph, mode=mode)
+        return( work_model, )
 
 class ConsoleDebug:
     def __init__(self):
