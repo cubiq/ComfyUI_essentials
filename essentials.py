@@ -5,7 +5,6 @@ import math
 import random
 import operator as op
 import numpy as np
-from scipy.ndimage import grey_dilation, grey_erosion
 
 import torch
 import torch.nn.functional as F
