@@ -64,8 +64,8 @@ class ImageResize:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "width": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, "display": "number" }),
-                "height": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, "display": "number" }),
+                "width": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
+                "height": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
                 "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
                 "keep_proportion": ("BOOLEAN", { "default": False }),
             }
@@ -124,11 +124,11 @@ class ImageCrop:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "width": ("INT", { "default": 256, "min": 0, "max": MAX_RESOLUTION, "step": 8, "display": "number" }),
-                "height": ("INT", { "default": 256, "min": 0, "max": MAX_RESOLUTION, "step": 8, "display": "number" }),
+                "width": ("INT", { "default": 256, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
+                "height": ("INT", { "default": 256, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
                 "position": (["top-left", "top-center", "top-right", "right-center", "bottom-right", "bottom-center", "bottom-left", "left-center", "center"],),
-                "x_offset": ("INT", { "default": 0, "min": -99999, "step": 1, "display": "number" }),
-                "y_offset": ("INT", { "default": 0, "min": -99999, "step": 1, "display": "number" }),
+                "x_offset": ("INT", { "default": 0, "min": -99999, "step": 1, }),
+                "y_offset": ("INT", { "default": 0, "min": -99999, "step": 1, }),
             }
         }
     
@@ -180,6 +180,7 @@ class ImageDesaturate:
         return {
             "required": {
                 "image": ("IMAGE",),
+                "factor": ("FLOAT", { "default": 1.00, "min": 0.00, "max": 1.00, "step": 0.05, }),
             }
         }
     
@@ -187,15 +188,10 @@ class ImageDesaturate:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, image):
-        #image = p(image)
-        #image = T.Grayscale(3)(image)
-        #image = pb(image)
-        #image = image.mean(dim=3, keepdim=True)
-        #image = image.repeat(1, 1, 1, 3)
-        image = 0.299 * image[..., 0] + 0.587 * image[..., 1] + 0.114 * image[..., 2]
-        image = image.unsqueeze(-1).repeat(1, 1, 1, 3)
-        return(image,)
+    def execute(self, image, factor):
+        grayscale = 0.299 * image[..., 0] + 0.587 * image[..., 1] + 0.114 * image[..., 2]
+        grayscale = (1.0 - factor) * image + factor * grayscale.unsqueeze(-1).repeat(1, 1, 1, 3)
+        return(grayscale,)
 
 class ImagePosterize:
     @classmethod
@@ -203,7 +199,7 @@ class ImagePosterize:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "threshold": ("FLOAT", { "default": 0.50, "min": 0.00, "max": 1.00, "step": 0.05, "display": "number" }),
+                "threshold": ("FLOAT", { "default": 0.50, "min": 0.00, "max": 1.00, "step": 0.05, }),
             }
         }
     
@@ -226,7 +222,7 @@ class ImageEnhanceDifference:
             "required": {
                 "image1": ("IMAGE",),
                 "image2": ("IMAGE",),
-                "exponent": ("FLOAT", { "default": 0.75, "min": 0.00, "max": 1.00, "step": 0.05, "display": "number" }),
+                "exponent": ("FLOAT", { "default": 0.75, "min": 0.00, "max": 1.00, "step": 0.05, }),
             }
         }
     
@@ -276,8 +272,8 @@ class MaskBlur:
         return {
             "required": {
                 "mask": ("MASK",),
-                "size": ("INT", { "default": 5, "min": 1, "step": 1, "display": "number" }),
-                "sigma": ("FLOAT", { "default": 1.0, "min": 0, "step": 0.5, "display": "number" }),
+                "size": ("INT", { "default": 5, "min": 1, "step": 1, }),
+                "sigma": ("FLOAT", { "default": 1.0, "min": 0, "step": 0.5, }),
             }
         }
     
@@ -350,11 +346,11 @@ class TransitionMask:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "width": ("INT", { "default": 512, "min": 1, "max": MAX_RESOLUTION, "step": 1, "display": "number" }),
-                "height": ("INT", { "default": 512, "min": 1, "max": MAX_RESOLUTION, "step": 1, "display": "number" }),
-                "frames": ("INT", { "default": 16, "min": 1, "max": 9999, "step": 1, "display": "number" }),
-                "start_frame": ("INT", { "default": 0, "min": 0, "step": 1, "display": "number" }),
-                "end_frame": ("INT", { "default": 9999, "min": 0, "step": 1, "display": "number" }),
+                "width": ("INT", { "default": 512, "min": 1, "max": MAX_RESOLUTION, "step": 1, }),
+                "height": ("INT", { "default": 512, "min": 1, "max": MAX_RESOLUTION, "step": 1, }),
+                "frames": ("INT", { "default": 16, "min": 1, "max": 9999, "step": 1, }),
+                "start_frame": ("INT", { "default": 0, "min": 0, "step": 1, }),
+                "end_frame": ("INT", { "default": 9999, "min": 0, "step": 1, }),
                 "transition_type": (["horizontal slide", "vertical slide", "horizontal bar", "vertical bar", "center box", "horizontal door", "vertical door", "circle", "fade"],),
                 "timing_function": (["linear", "in", "out", "in-out"],)
             }
