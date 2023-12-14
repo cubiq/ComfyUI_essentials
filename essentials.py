@@ -320,8 +320,7 @@ class MaskBlur:
         return {
             "required": {
                 "mask": ("MASK",),
-                "size": ("INT", { "default": 5, "min": 1, "step": 1, }),
-                "sigma": ("FLOAT", { "default": 1.0, "min": 0, "step": 0.5, }),
+                "amount": ("FLOAT", { "default": 6.0, "min": 0, "step": 0.5, }),
             }
         }
     
@@ -329,15 +328,16 @@ class MaskBlur:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, mask, size, sigma):
+    def execute(self, mask, amount):
+        size = int(6 * amount +1)
         if size % 2 == 0:
-            size+=1
-
-        blurred = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
+            size+= 1
+        
+        blurred = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 1)
         blurred = p(blurred)
-        blurred = T.GaussianBlur(size, sigma)(blurred)
+        blurred = T.GaussianBlur(size, amount)(blurred)
         blurred = pb(blurred)
-        blurred = blurred[0, :, :, 0]
+        blurred = blurred[:, :, :, 0]
 
         return(blurred,)
 
@@ -360,9 +360,7 @@ class MaskPreview(SaveImage):
 
     def execute(self, mask, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
         preview = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 3)
-        results = self.save_images(preview, filename_prefix, prompt, extra_pnginfo)
-
-        return( results )
+        return self.save_images(preview, filename_prefix, prompt, extra_pnginfo)
 
 class MaskBatch:
     @classmethod
