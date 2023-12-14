@@ -436,6 +436,36 @@ def cubic_bezier(t, p):
     p0, p1, p2, p3 = p
     return (1 - t)**3 * p0 + 3 * (1 - t)**2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3 * p3
 
+class MaskFromColor:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE", ),
+                "red": ("INT", { "default": 255, "min": 0, "max": 255, "step": 1, }),
+                "green": ("INT", { "default": 255, "min": 0, "max": 255, "step": 1, }),
+                "blue": ("INT", { "default": 255, "min": 0, "max": 9999, "step": 1, }),
+                "threshold": ("INT", { "default": 0, "min": 0, "max": 127, "step": 1, }),
+            }
+        }
+    
+    RETURN_TYPES = ("MASK",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image, red, green, blue, threshold):
+        temp = (torch.clamp(image, 0, 1.0) * 255.0).round().to(torch.int)
+        color = torch.tensor([red, green, blue])
+        lower_bound = (color - threshold).clamp(min=0)
+        upper_bound = (color + threshold).clamp(max=255)
+        lower_bound = lower_bound.view(1, 1, 1, 3)
+        upper_bound = upper_bound.view(1, 1, 1, 3)
+        mask = (temp >= lower_bound) & (temp <= upper_bound)
+        mask = mask.all(dim=-1)
+        mask = mask.float()
+
+        return (mask, )
+
 class TransitionMask:
     @classmethod
     def INPUT_TYPES(s):
@@ -716,6 +746,7 @@ NODE_CLASS_MAPPINGS = {
     "MaskBatch+": MaskBatch,
     "MaskExpandBatch+": MaskExpandBatch,
     "TransitionMask+": TransitionMask,
+    "MaskFromColor+": MaskFromColor,
 
     "SimpleMath+": SimpleMath,
     "ConsoleDebug+": ConsoleDebug,
@@ -742,6 +773,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MaskBatch+": "🔧 Mask Batch",
     "MaskExpandBatch+": "🔧 Mask Expand Batch",
     "TransitionMask+": "🔧 Transition Mask",
+    "MaskFromColor+": "🔧 Mask From Color",
 
     "SimpleMath+": "🔧 Simple Math",
     "ConsoleDebug+": "🔧 Console Debug",

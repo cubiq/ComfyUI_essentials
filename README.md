@@ -19,6 +19,7 @@ Essential nodes that are weirdly missing from ComfyUI core. With few exceptions 
 - Mask Preview
 - Mask Batch, same as Image batch but for masks
 - Mask Expand Batch, expands a mask batch to a given size repeating the masks uniformly
+- Mask From Color
 - Transition Mask, creates a transition with series of masks, useful for animations
 - Simple Math
 - Console Debug (outputs any input to console)
