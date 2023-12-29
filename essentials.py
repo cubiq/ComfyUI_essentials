@@ -290,6 +290,56 @@ class ImageExpandBatch:
 
         return (out,)
 
+# highly experimental
+def identify_keyframes_pytorch(frame_differences, threshold):
+    keyframe_indices = []
+    for i, diff in enumerate(frame_differences):
+        if diff >= threshold:
+            keyframe_indices.append(i + window_size)  # Adjusting index for window size
+    return keyframe_indices
+
+class ExtractKeyframes:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "window_size": ("INT", { "default": 5, "min": 1, "step": 1, }),
+                "max_frames": ("INT", { "default": 3, "min": 1, "step": 1, }),
+                #"threshold": ("FLOAT", { "default": 0.75, "min": 0.00, "max": 1.00, "step": 0.05, }),
+            }
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image, window_size, max_frames):
+        mse_values = []
+
+        for i in range(window_size, image.shape[0]):
+            prev_frames_avg = torch.mean(image[i-window_size:i], dim=0)
+            current_frame = image[i]
+            mse = torch.mean((prev_frames_avg - current_frame) ** 2)
+            mse_values.append(mse.item())
+
+        sorted_mse = sorted(mse_values, reverse=True)
+        if max_frames >= len(sorted_mse):
+            threshold = sorted_mse[-1]
+        else:
+            threshold = sorted_mse[max_frames-1]
+        
+        print(threshold)
+
+        keyframe_indices = []
+        for i, diff in enumerate(mse_values):
+            if diff >= threshold:
+                keyframe_indices.append(i + window_size)
+
+        out = image[keyframe_indices]
+        print(keyframe_indices)
+        return (out,)
+
 class MaskFlip:
     @classmethod
     def INPUT_TYPES(s):
@@ -465,6 +515,28 @@ class MaskFromColor:
         mask = mask.float()
 
         return (mask, )
+
+class MaskFromBatch:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "mask": ("MASK", ),
+                "start": ("INT", { "default": 0, "min": 0, "step": 1, }),
+                "length": ("INT", { "default": -1, "min": -1, "step": 1, }),
+            }
+        }
+    
+    RETURN_TYPES = ("MASK",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, mask, start, length):
+        if length<0:
+            length = mask.shape[0]
+        start = min(start, mask.shape[0]-1)
+        length = min(mask.shape[0]-start, length)
+        return (mask[start:start + length], )
 
 class TransitionMask:
     @classmethod
@@ -779,6 +851,7 @@ NODE_CLASS_MAPPINGS = {
     "ImageCASharpening+": ImageCAS,
     "ImageEnhanceDifference+": ImageEnhanceDifference,
     "ImageExpandBatch+": ImageExpandBatch,
+    "ExtractKeyframes+": ExtractKeyframes,
 
     "MaskBlur+": MaskBlur,
     "MaskFlip+": MaskFlip,
@@ -787,6 +860,7 @@ NODE_CLASS_MAPPINGS = {
     "MaskExpandBatch+": MaskExpandBatch,
     "TransitionMask+": TransitionMask,
     "MaskFromColor+": MaskFromColor,
+    "MaskFromBatch+": MaskFromBatch,
 
     "SimpleMath+": SimpleMath,
     "ConsoleDebug+": ConsoleDebug,
@@ -808,6 +882,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageCASharpening+": "🔧 Image Contrast Adaptive Sharpening",
     "ImageEnhanceDifference+": "🔧 Image Enhance Difference",
     "ImageExpandBatch+": "🔧 Image Expand Batch",
+    "ExtractKeyframes+": "🔧 Extract Keyframes",
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
@@ -816,6 +891,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MaskExpandBatch+": "🔧 Mask Expand Batch",
     "TransitionMask+": "🔧 Transition Mask",
     "MaskFromColor+": "🔧 Mask From Color",
+    "MaskFromBatch+": "🔧 MaskFromBatch",
 
     "SimpleMath+": "🔧 Simple Math",
     "ConsoleDebug+": "🔧 Console Debug",
