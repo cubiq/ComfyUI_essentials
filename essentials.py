@@ -538,6 +538,28 @@ class MaskFromBatch:
         length = min(mask.shape[0]-start, length)
         return (mask[start:start + length], )
 
+class ImageFromBatch:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE", ),
+                "start": ("INT", { "default": 0, "min": 0, "step": 1, }),
+                "length": ("INT", { "default": -1, "min": -1, "step": 1, }),
+            }
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image, start, length):
+        if length<0:
+            length = image.shape[0]
+        start = min(start, image.shape[0]-1)
+        length = min(image.shape[0]-start, length)
+        return (image[start:start + length], )
+
 class TransitionMask:
     @classmethod
     def INPUT_TYPES(s):
@@ -851,6 +873,7 @@ NODE_CLASS_MAPPINGS = {
     "ImageCASharpening+": ImageCAS,
     "ImageEnhanceDifference+": ImageEnhanceDifference,
     "ImageExpandBatch+": ImageExpandBatch,
+    "ImageFromBatch+": ImageFromBatch,
     "ExtractKeyframes+": ExtractKeyframes,
 
     "MaskBlur+": MaskBlur,
@@ -872,7 +895,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "StableZero123_Increments": "🔧 StableZero123 with Increments (temporary)",
 
     "GetImageSize+": "🔧 Get Image Size",
-
     "ImageResize+": "🔧 Image Resize",
     "ImageCrop+": "🔧 Image Crop",
     "ImageFlip+": "🔧 Image Flip",
@@ -882,6 +904,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageCASharpening+": "🔧 Image Contrast Adaptive Sharpening",
     "ImageEnhanceDifference+": "🔧 Image Enhance Difference",
     "ImageExpandBatch+": "🔧 Image Expand Batch",
+    "ImageFromBatch+": "🔧 Image From Batch",
     "ExtractKeyframes+": "🔧 Extract Keyframes",
 
     "MaskBlur+": "🔧 Mask Blur",
