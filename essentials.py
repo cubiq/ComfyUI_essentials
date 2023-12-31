@@ -820,6 +820,29 @@ class ConsoleDebug:
 
         return (None,)
 
+class BatchCount:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "batch": (any, {}),
+            },
+        }
+
+    RETURN_TYPES = ("INT",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, batch):
+        count = 0
+        if hasattr(batch, 'shape'):
+            count = batch.shape[0]
+        elif isinstance(batch, dict) and 'samples' in batch:
+            count = batch['samples'].shape[0]
+        elif isinstance(batch, list) or isinstance(batch, dict):
+            count = len(batch)
+
+        return (count, )
 
 from comfy_extras.nodes_stable3d import camera_embeddings
 class StableZero123_Increments:
@@ -889,6 +912,7 @@ NODE_CLASS_MAPPINGS = {
     "ConsoleDebug+": ConsoleDebug,
 
     "ModelCompile+": ModelCompile,
+    "BatchCount+": BatchCount,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -920,4 +944,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConsoleDebug+": "🔧 Console Debug",
 
     "ModelCompile+": "🔧 Compile Model",
+    "BatchCount+": "🔧 Batch Count",
 }
