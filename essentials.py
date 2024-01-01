@@ -290,55 +290,38 @@ class ImageExpandBatch:
 
         return (out,)
 
-# highly experimental
-def identify_keyframes_pytorch(frame_differences, threshold):
-    keyframe_indices = []
-    for i, diff in enumerate(frame_differences):
-        if diff >= threshold:
-            keyframe_indices.append(i + window_size)  # Adjusting index for window size
-    return keyframe_indices
-
 class ExtractKeyframes:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "image": ("IMAGE",),
-                "window_size": ("INT", { "default": 5, "min": 1, "step": 1, }),
-                "max_frames": ("INT", { "default": 3, "min": 1, "step": 1, }),
-                #"threshold": ("FLOAT", { "default": 0.75, "min": 0.00, "max": 1.00, "step": 0.05, }),
+                "threshold": ("FLOAT", { "default": 0.85, "min": 0.00, "max": 1.00, "step": 0.01, }),
             }
         }
-    
-    RETURN_TYPES = ("IMAGE",)
+
+    RETURN_TYPES = ("IMAGE", "STRING")
+    RETURN_NAMES = ("KEYFRAMES", "indexes")
+
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, image, window_size, max_frames):
-        mse_values = []
+    def execute(self, image, threshold):
+        window_size = 2
 
-        for i in range(window_size, image.shape[0]):
-            prev_frames_avg = torch.mean(image[i-window_size:i], dim=0)
-            current_frame = image[i]
-            mse = torch.mean((prev_frames_avg - current_frame) ** 2)
-            mse_values.append(mse.item())
+        variations = torch.sum(torch.abs(image[1:] - image[:-1]), dim=[1, 2, 3])
+        #variations = torch.sum((image[1:] - image[:-1]) ** 2, dim=[1, 2, 3])
+        threshold = torch.quantile(variations.float(), threshold).item()
 
-        sorted_mse = sorted(mse_values, reverse=True)
-        if max_frames >= len(sorted_mse):
-            threshold = sorted_mse[-1]
-        else:
-            threshold = sorted_mse[max_frames-1]
-        
-        print(threshold)
+        keyframes = []
+        for i in range(image.shape[0] - window_size + 1):
+            window = image[i:i + window_size]
+            variation = torch.sum(torch.abs(window[-1] - window[0])).item()
 
-        keyframe_indices = []
-        for i, diff in enumerate(mse_values):
-            if diff >= threshold:
-                keyframe_indices.append(i + window_size)
+            if variation > threshold:
+                keyframes.append(i + window_size - 1)
 
-        out = image[keyframe_indices]
-        print(keyframe_indices)
-        return (out,)
+        return (image[keyframes], ','.join(map(str, keyframes)),)
 
 class MaskFlip:
     @classmethod
@@ -863,7 +846,6 @@ class StableZero123_Increments:
     RETURN_NAMES = ("positive", "negative", "latent")
 
     FUNCTION = "encode"
-
     CATEGORY = "essentials"
 
     def encode(self, clip_vision, init_image, vae, width, height, batch_size, elevation, azimuth, elevation_inc, azimuth_inc):
@@ -881,6 +863,56 @@ class StableZero123_Increments:
         negative = [[torch.zeros_like(pooled), {"concat_latent_image": torch.zeros_like(t)}]]
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])
         return (positive, negative, {"samples":latent})
+
+class CLIPTextEncodeSDXLSimplified:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "width": ("INT", {"default": 1024.0, "min": 0, "max": MAX_RESOLUTION}),
+            "height": ("INT", {"default": 1024.0, "min": 0, "max": MAX_RESOLUTION}),
+            "text": ("STRING", {"multiline": True, "default": ""}),
+            "clip": ("CLIP", ),
+            }}
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, clip, width, height, text):
+        crop_w = 0
+        crop_h = 0
+        width = width*4
+        height = height*4
+        target_width = width
+        target_height = height
+        text_g = text_l = text
+
+        tokens = clip.tokenize(text_g)
+        tokens["l"] = clip.tokenize(text_l)["l"]
+        if len(tokens["l"]) != len(tokens["g"]):
+            empty = clip.tokenize("")
+            while len(tokens["l"]) < len(tokens["g"]):
+                tokens["l"] += empty["l"]
+            while len(tokens["l"]) > len(tokens["g"]):
+                tokens["g"] += empty["g"]
+        cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+        return ([[cond, {"pooled_output": pooled, "width": width, "height": height, "crop_w": crop_w, "crop_h": crop_h, "target_width": target_width, "target_height": target_height}]], )
+
+class SDXLResolutionPicker:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "resolution": (["704x1408 (0.5)","704x1344 (0.52)","768x1344 (0.57)","768x1280 (0.6)","832x1216 (0.68)","832x1152 (0.72)","896x1152 (0.78)","896x1088 (0.82)","960x1088 (0.88)","960x1024 (0.94)","1024x1024 (1.0)","1024x960 (1.07)","1088x960 (1.13)","1088x896 (1.21)","1152x896 (1.29)","1152x832 (1.38)","1216x832 (1.46)","1280x768 (1.67)","1344x768 (1.75)","1344x704 (1.91)","1408x704 (2.0)","1472x704 (2.09)","1536x640 (2.4)","1600x640 (2.5)","1664x576 (2.89)","1728x576 (3.0)",], {"default": "1024x1024 (1.0)"}),
+            }}
+
+    RETURN_TYPES = ("INT","INT",)
+    RETURN_NAMES = ("width", "height",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, resolution):
+        width, height = resolution.split(" ")[0].split("x")
+
+        return (width, height,)
 
 NODE_CLASS_MAPPINGS = {
     "StableZero123_Increments": StableZero123_Increments,
@@ -913,6 +945,9 @@ NODE_CLASS_MAPPINGS = {
 
     "ModelCompile+": ModelCompile,
     "BatchCount+": BatchCount,
+
+    "CLIPTextEncodeSDXL+": CLIPTextEncodeSDXLSimplified,
+    "SDXLResolutionPicker+": SDXLResolutionPicker,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -929,7 +964,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageEnhanceDifference+": "🔧 Image Enhance Difference",
     "ImageExpandBatch+": "🔧 Image Expand Batch",
     "ImageFromBatch+": "🔧 Image From Batch",
-    "ExtractKeyframes+": "🔧 Extract Keyframes",
+    "ExtractKeyframes+": "🔧 Extract Keyframes (experimental)",
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
@@ -945,4 +980,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
     "ModelCompile+": "🔧 Compile Model",
     "BatchCount+": "🔧 Batch Count",
+
+    "CLIPTextEncodeSDXL+": "🔧 SDXLCLIPTextEncode",
+    "SDXLResolutionPicker+": "🔧 SDXL Resolutions",
 }
