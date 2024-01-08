@@ -827,43 +827,6 @@ class BatchCount:
 
         return (count, )
 
-from comfy_extras.nodes_stable3d import camera_embeddings
-class StableZero123_Increments:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {"required": { "clip_vision": ("CLIP_VISION",),
-                              "init_image": ("IMAGE",),
-                              "vae": ("VAE",),
-                              "width": ("INT", {"default": 256, "min": 16, "max": MAX_RESOLUTION, "step": 8}),
-                              "height": ("INT", {"default": 256, "min": 16, "max": MAX_RESOLUTION, "step": 8}),
-                              "batch_size": ("INT", {"default": 1, "min": 1, "max": 4096}),
-                              "elevation": ("FLOAT", {"default": 0.0, "min": -180.0, "max": 180.0}),
-                              "azimuth": ("FLOAT", {"default": 0.0, "min": -180.0, "max": 180.0}),
-                              "elevation_inc": ("FLOAT", {"default": 0.0, "min": -180.0, "max": 180.0}),
-                              "azimuth_inc": ("FLOAT", {"default": 0.0, "min": -180.0, "max": 180.0}),
-                             }}
-    RETURN_TYPES = ("CONDITIONING", "CONDITIONING", "LATENT")
-    RETURN_NAMES = ("positive", "negative", "latent")
-
-    FUNCTION = "encode"
-    CATEGORY = "essentials"
-
-    def encode(self, clip_vision, init_image, vae, width, height, batch_size, elevation, azimuth, elevation_inc, azimuth_inc):
-        output = clip_vision.encode_image(init_image)
-        pooled = output.image_embeds.unsqueeze(0)
-        pixels = comfy.utils.common_upscale(init_image.movedim(-1,1), width, height, "bilinear", "center").movedim(1,-1)
-        encode_pixels = pixels[:,:,:,:3]
-        t = vae.encode(encode_pixels)
-
-        cam_embeds = [camera_embeddings(elevation + i * elevation_inc, azimuth + i * azimuth_inc) for i in range(batch_size)]
-        cam_embeds = torch.cat(cam_embeds, dim=0)
-        cond = torch.cat([pooled.repeat((batch_size, 1, 1)), cam_embeds], dim=-1)
-       
-        positive = [[cond, {"concat_latent_image": t}]]
-        negative = [[torch.zeros_like(pooled), {"concat_latent_image": torch.zeros_like(t)}]]
-        latent = torch.zeros([batch_size, 4, height // 8, width // 8])
-        return (positive, negative, {"samples":latent})
-
 class CLIPTextEncodeSDXLSimplified:
     @classmethod
     def INPUT_TYPES(s):
@@ -915,8 +878,6 @@ class SDXLResolutionPicker:
         return (width, height,)
 
 NODE_CLASS_MAPPINGS = {
-    "StableZero123_Increments": StableZero123_Increments,
-
     "GetImageSize+": GetImageSize,
 
     "ImageResize+": ImageResize,
@@ -951,8 +912,6 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "StableZero123_Increments": "🔧 StableZero123 with Increments (temporary)",
-
     "GetImageSize+": "🔧 Get Image Size",
     "ImageResize+": "🔧 Image Resize",
     "ImageCrop+": "🔧 Image Crop",
