@@ -20,18 +20,6 @@ def p(image):
 def pb(image):
     return image.permute([0,2,3,1])
 
-operators = {
-    ast.Add: op.add,
-    ast.Sub: op.sub,
-    ast.Mult: op.mul,
-    ast.Div: op.truediv,
-    ast.FloorDiv: op.floordiv,
-    ast.Pow: op.pow,
-    ast.BitXor: op.xor,
-    ast.USub: op.neg,
-    ast.Mod: op.mod,
-}
-
 # from https://github.com/pythongosssss/ComfyUI-Custom-Scripts
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
@@ -67,6 +55,7 @@ class ImageResize:
                 "height": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
                 "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
                 "keep_proportion": ("BOOLEAN", { "default": False }),
+                "condition": (["always", "only if bigger", "only if smaller"],),
             }
         }
 
@@ -75,7 +64,7 @@ class ImageResize:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, image, width, height, keep_proportion, interpolation="nearest"):
+    def execute(self, image, width, height, keep_proportion, interpolation="nearest", condition="always"):
         if keep_proportion is True:
             _, oh, ow, _ = image.shape
             width = ow if width == 0 else width
@@ -83,12 +72,15 @@ class ImageResize:
             ratio = min(width / ow, height / oh)
             width = round(ow*ratio)
             height = round(oh*ratio)
-        
+
         outputs = p(image)
-        if interpolation == "lanczos":
-            outputs = comfy.utils.lanczos(outputs, width, height)
-        else:
-            outputs = F.interpolate(outputs, size=(height, width), mode=interpolation)
+
+        if "always" in condition or ("bigger" in condition and (oh > height or ow > width)) or ("smaller" in condition and (oh < height or ow < width)):
+            if interpolation == "lanczos":
+                outputs = comfy.utils.lanczos(outputs, width, height)
+            else:
+                outputs = F.interpolate(outputs, size=(height, width), mode=interpolation)
+        
         outputs = pb(outputs)
 
         return(outputs, outputs.shape[2], outputs.shape[1],)
@@ -752,6 +744,23 @@ class ImageCAS:
 
         return (output,)
 
+operators = {
+    ast.Add: op.add,
+    ast.Sub: op.sub,
+    ast.Mult: op.mul,
+    ast.Div: op.truediv,
+    ast.FloorDiv: op.floordiv,
+    ast.Pow: op.pow,
+    ast.BitXor: op.xor,
+    ast.USub: op.neg,
+    ast.Mod: op.mod,
+}
+
+op_functions = {
+    'min': min,
+    'max': max
+}
+
 class SimpleMath:
     def __init__(self):
         pass
@@ -785,6 +794,10 @@ class SimpleMath:
                 return operators[type(node.op)](eval_(node.left), eval_(node.right))
             elif isinstance(node, ast.UnaryOp): # <operator> <operand> e.g., -1
                 return operators[type(node.op)](eval_(node.operand))
+            elif isinstance(node, ast.Call): # custom function
+                if node.func.id in op_functions:
+                    args =[eval_(arg) for arg in node.args]
+                    return op_functions[node.func.id](*args)
             else:
                 return 0
 
