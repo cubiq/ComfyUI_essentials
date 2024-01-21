@@ -4,11 +4,10 @@ import ast
 import math
 import random
 import operator as op
-import numpy as np
+#import numpy as np
 
 import torch
 import torch.nn.functional as F
-
 import torchvision.transforms.v2 as T
 
 from nodes import MAX_RESOLUTION, SaveImage
@@ -67,8 +66,19 @@ class ImageResize:
     def execute(self, image, width, height, keep_proportion, interpolation="nearest", condition="always"):
         if keep_proportion is True:
             _, oh, ow, _ = image.shape
-            width = ow if width == 0 else width
-            height = oh if height == 0 else height
+
+            if width == 0 and oh < height:
+                width = MAX_RESOLUTION
+            elif width == 0 and oh >= height:
+                width = ow
+
+            if height == 0 and ow < width:
+                height = MAX_RESOLUTION
+            elif height == 0 and ow >= width:
+                height = ow
+
+            #width = ow if width == 0 else width
+            #height = oh if height == 0 else height
             ratio = min(width / ow, height / oh)
             width = round(ow*ratio)
             height = round(oh*ratio)
@@ -913,6 +923,64 @@ class BatchCount:
             count = len(batch)
 
         return (count, )
+   
+class ImageSeamCarving:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "width": ("INT", { "default": 512, "min": 1, "max": MAX_RESOLUTION, "step": 1, }),
+                "height": ("INT", { "default": 512, "min": 1, "max": MAX_RESOLUTION, "step": 1, }),
+                "energy": (["backward", "forward"],),
+                "order": (["width-first", "height-first"],),
+            },
+            "optional": {
+                "keep_mask": ("MASK",),
+                "drop_mask": ("MASK",),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    CATEGORY = "essentials"
+    FUNCTION = "execute"
+
+    def execute(self, image, width, height, energy, order, keep_mask=None, drop_mask=None):
+        try:
+            from .carve import seam_carving
+        except ImportError as e:
+            raise Exception(e)
+
+        img = p(image)
+
+        if keep_mask is not None:
+            #keep_mask = keep_mask.reshape((-1, 1, keep_mask.shape[-2], keep_mask.shape[-1])).movedim(1, -1)
+            keep_mask = p(keep_mask.unsqueeze(-1))
+
+            if keep_mask.shape[2] != img.shape[2] or keep_mask.shape[3] != img.shape[3]:
+                keep_mask = F.interpolate(keep_mask, size=(img.shape[2], img.shape[3]), mode="bilinear")
+        if drop_mask is not None:
+            drop_mask = p(drop_mask.unsqueeze(-1))
+
+            if drop_mask.shape[2] != img.shape[2] or drop_mask.shape[3] != img.shape[3]:
+                drop_mask = F.interpolate(drop_mask, size=(img.shape[2], img.shape[3]), mode="bilinear")
+
+        out = []
+        for i in range(img.shape[0]):
+            resized = seam_carving(
+                T.ToPILImage()(img[i]),
+                size=(width, height), 
+                energy_mode=energy,
+                order=order,
+                keep_mask=T.ToPILImage()(keep_mask[i]) if keep_mask is not None else None,
+                drop_mask=T.ToPILImage()(drop_mask[i]) if drop_mask is not None else None,
+            )
+            out.append(T.ToTensor()(resized))
+        
+        out = torch.stack(out)
+        out = pb(out)
+
+        return(out, )
 
 class CLIPTextEncodeSDXLSimplified:
     @classmethod
@@ -974,6 +1042,7 @@ NODE_CLASS_MAPPINGS = {
     "ImageDesaturate+": ImageDesaturate,
     "ImagePosterize+": ImagePosterize,
     "ImageCASharpening+": ImageCAS,
+    "ImageSeamCarving+": ImageSeamCarving,
     "ImageEnhanceDifference+": ImageEnhanceDifference,
     "ImageExpandBatch+": ImageExpandBatch,
     "ImageFromBatch+": ImageFromBatch,
@@ -1009,6 +1078,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageDesaturate+": "🔧 Image Desaturate",
     "ImagePosterize+": "🔧 Image Posterize",
     "ImageCASharpening+": "🔧 Image Contrast Adaptive Sharpening",
+    "ImageSeamCarving+": "🔧 Image Seam Carving",
     "ImageEnhanceDifference+": "🔧 Image Enhance Difference",
     "ImageExpandBatch+": "🔧 Image Expand Batch",
     "ImageFromBatch+": "🔧 Image From Batch",
