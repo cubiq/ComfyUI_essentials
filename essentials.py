@@ -3,8 +3,9 @@ warnings.filterwarnings('ignore', module="torchvision")
 import ast
 import math
 import random
+import os
 import operator as op
-#import numpy as np
+import numpy as np
 
 import torch
 import torch.nn.functional as F
@@ -324,6 +325,61 @@ class ExtractKeyframes:
                 keyframes.append(i + window_size - 1)
 
         return (image[keyframes], ','.join(map(str, keyframes)),)
+
+"""
+class NoiseFromImage:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "noise_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "adjust_levels": ("FLOAT", { "default": 1.00, "min": 0.00, "max": 20.00, "step": 0.05, }),
+                #"noise_intensity": ("FLOAT", { "default": 1.00, "min": 0.00, "max": 1.00, "step": 0.05, }),
+                "noise_density": ("FLOAT", { "default": 0.05, "min": 0.00, "max": 1.00, "step": 0.05, }),
+                "noise_scale": ("FLOAT", { "default": 0.2, "min": 0.00, "max": 1.00, "step": 0.05, }),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image, noise_seed, adjust_levels, noise_density, noise_scale):
+        generator = torch.manual_seed(noise_seed)
+
+        image = image.mean(dim=3).unsqueeze(-1).repeat(1, 1, 1, 3)
+       
+        # Adjust image levels
+        image = (1 - adjust_levels) * torch.mean(image) + adjust_levels * image
+        image = torch.clamp(image, 0, 1)
+
+        # Create noise
+        fine_noise = torch.rand([image.shape[0], image.shape[1], image.shape[2], image.shape[3]], dtype=image.dtype, layout=image.layout, generator=generator, device="cpu")
+        fine_noise = fine_noise * (fine_noise > 1-noise_density).float() # Lower density
+        fine_noise = (fine_noise * 16).round() / 16
+        coarse_noise = F.interpolate(p(fine_noise), scale_factor=noise_scale, mode='bilinear', align_corners=False)
+        coarse_noise = F.interpolate(coarse_noise, size=(image.shape[1], image.shape[2]), mode='bilinear', align_corners=False)
+        coarse_noise = pb(coarse_noise)
+
+        # Merge noises
+        noise = ((1 - image) * coarse_noise + image * fine_noise)
+        noise = torch.clamp(noise, 0, 1)
+        noise = image * noise
+
+        # Change noise intensity
+        #noise = noise * noise_intensity
+        #print(noise.min(), noise.max())
+        #noise = torch.clamp(noise, 0, 1)
+
+        # Apply noise to image
+        #noise = torch.clamp((1-noise_intensity) * image + noise, 0, 1)
+
+        #out = image + fine_noise * mask * noise_intensity
+
+        return (noise,)
+"""
 
 class MaskFlip:
     @classmethod
@@ -1032,6 +1088,65 @@ class SDXLResolutionPicker:
 
         return (width, height,)
 
+LUTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "luts")
+# From https://github.com/yoonsikp/pycubelut/blob/master/pycubelut.py (MIT license)
+class ImageApplyLUT:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "lut_file": ([f for f in os.listdir(LUTS_DIR) if f.endswith('.cube')], ),
+                "log_colorspace": ("BOOLEAN", { "default": False }),
+                "clip_values": ("BOOLEAN", { "default": False }),
+            }}
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    # TODO: check if we can do without numpy
+    def execute(self, image, lut_file, log_colorspace, clip_values):
+        from colour.io.luts.iridas_cube import read_LUT_IridasCube
+
+        lut = read_LUT_IridasCube(os.path.join(LUTS_DIR, lut_file))
+        lut.name = lut_file
+
+        if clip_values:
+            if lut.domain[0].max() == lut.domain[0].min() and lut.domain[1].max() == lut.domain[1].min():
+                lut.table = np.clip(lut.table, lut.domain[0, 0], lut.domain[1, 0])
+            else:
+                if len(lut.table.shape) == 2:  # 3x1D
+                    for dim in range(3):
+                        lut.table[:, dim] = np.clip(lut.table[:, dim], lut.domain[0, dim], lut.domain[1, dim])
+                else:  # 3D
+                    for dim in range(3):
+                        lut.table[:, :, :, dim] = np.clip(lut.table[:, :, :, dim], lut.domain[0, dim], lut.domain[1, dim])
+
+        out = []
+        for img in image: # TODO: is this more resrouce efficient?
+            img = img.numpy().copy()
+
+            is_non_default_domain = not np.array_equal(lut.domain, np.array([[0., 0., 0.], [1., 1., 1.]]))
+            dom_scale = None
+            if is_non_default_domain:
+                dom_scale = lut.domain[1] - lut.domain[0]
+                img = img * dom_scale + lut.domain[0]
+            if log_colorspace:
+                img = img ** (1/2.2)
+            img = lut.apply(img)
+            if log_colorspace:
+                img = img ** (2.2)
+            if is_non_default_domain:
+                img = (img - lut.domain[0]) / dom_scale
+
+            img = torch.from_numpy(img)
+            out.append(img)
+        
+        out = torch.stack(out)
+
+        return (out, )
+
 NODE_CLASS_MAPPINGS = {
     "GetImageSize+": GetImageSize,
 
@@ -1048,6 +1163,8 @@ NODE_CLASS_MAPPINGS = {
     "ImageFromBatch+": ImageFromBatch,
     "ImageCompositeFromMaskBatch+": ImageCompositeFromMaskBatch,
     "ExtractKeyframes+": ExtractKeyframes,
+    "ImageApplyLUT+": ImageApplyLUT,
+    #"NoiseFromImage+": NoiseFromImage,
 
     "MaskBlur+": MaskBlur,
     "MaskFlip+": MaskFlip,
@@ -1084,6 +1201,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageFromBatch+": "🔧 Image From Batch",
     "ImageCompositeFromMaskBatch+": "🔧 Image Composite From Mask Batch",
     "ExtractKeyframes+": "🔧 Extract Keyframes (experimental)",
+    "ImageApplyLUT+": "🔧 Image Apply LUT",
+    #"NoiseFromImage+": "🔧 Noise From Image",
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
