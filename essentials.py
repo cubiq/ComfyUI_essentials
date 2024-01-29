@@ -1099,6 +1099,7 @@ class ImageApplyLUT:
                 "lut_file": ([f for f in os.listdir(LUTS_DIR) if f.endswith('.cube')], ),
                 "log_colorspace": ("BOOLEAN", { "default": False }),
                 "clip_values": ("BOOLEAN", { "default": False }),
+                "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.1 }),
             }}
 
     RETURN_TYPES = ("IMAGE",)
@@ -1106,9 +1107,9 @@ class ImageApplyLUT:
     CATEGORY = "essentials"
 
     # TODO: check if we can do without numpy
-    def execute(self, image, lut_file, log_colorspace, clip_values):
+    def execute(self, image, lut_file, log_colorspace, clip_values, strength):
         from colour.io.luts.iridas_cube import read_LUT_IridasCube
-
+        
         lut = read_LUT_IridasCube(os.path.join(LUTS_DIR, lut_file))
         lut.name = lut_file
 
@@ -1124,26 +1125,29 @@ class ImageApplyLUT:
                         lut.table[:, :, :, dim] = np.clip(lut.table[:, :, :, dim], lut.domain[0, dim], lut.domain[1, dim])
 
         out = []
-        for img in image: # TODO: is this more resrouce efficient?
-            img = img.numpy().copy()
+        for img in image: # TODO: is this more resrouce efficient? should we use a batch instead?
+            lut_img = img.numpy().copy()
 
             is_non_default_domain = not np.array_equal(lut.domain, np.array([[0., 0., 0.], [1., 1., 1.]]))
             dom_scale = None
             if is_non_default_domain:
                 dom_scale = lut.domain[1] - lut.domain[0]
-                img = img * dom_scale + lut.domain[0]
+                lut_img = lut_img * dom_scale + lut.domain[0]
             if log_colorspace:
-                img = img ** (1/2.2)
-            img = lut.apply(img)
+                lut_img = lut_img ** (1/2.2)
+            lut_img = lut.apply(lut_img)
             if log_colorspace:
-                img = img ** (2.2)
+                lut_img = lut_img ** (2.2)
             if is_non_default_domain:
-                img = (img - lut.domain[0]) / dom_scale
+                lut_img = (lut_img - lut.domain[0]) / dom_scale
 
-            img = torch.from_numpy(img)
-            out.append(img)
+            lut_img = torch.from_numpy(lut_img)
+            if strength < 1.0:
+                lut_img = strength * lut_img + (1 - strength) * img
+            out.append(lut_img)
         
         out = torch.stack(out)
+        out.cpu()
 
         return (out, )
 
