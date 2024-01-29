@@ -1147,7 +1147,6 @@ class ImageApplyLUT:
             out.append(lut_img)
         
         out = torch.stack(out)
-        out.cpu()
 
         return (out, )
 
