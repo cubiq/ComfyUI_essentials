@@ -1099,7 +1099,7 @@ class KSamplerVariationsWithNoise:
                     "scheduler": (comfy.samplers.KSampler.SCHEDULERS, ),
                     "positive": ("CONDITIONING", ),
                     "negative": ("CONDITIONING", ),
-                    "variation_strength": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 1.0, "step":0.01, "round": 0.01}),
+                    "variation_strength": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 1.0, "step":0.01, "round": 0.01}),
                     #"start_at_step": ("INT", {"default": 0, "min": 0, "max": 10000}),
                     #"end_at_step": ("INT", {"default": 10000, "min": 0, "max": 10000}),
                     #"return_with_leftover_noise": (["disable", "enable"], ),
