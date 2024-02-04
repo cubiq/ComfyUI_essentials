@@ -17,7 +17,7 @@ import folder_paths
 import comfy.utils
 import comfy.samplers
 
-STOCASTIC_SAMPLERS = ["euler_ancestral", "dpm_2_ancestral", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_sde_gpu", "dpmpp_2m_sde", "dpmpp_2m_sde_gpu", "dpmpp_3m_sde", "dpmpp_3m_sde_gpu", "ddpm"]
+STOCHASTIC_SAMPLERS = ["euler_ancestral", "dpm_2_ancestral", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_sde_gpu", "dpmpp_2m_sde", "dpmpp_2m_sde_gpu", "dpmpp_3m_sde", "dpmpp_3m_sde_gpu", "ddpm"]
 
 def p(image):
     return image.permute([0,3,1,2])
@@ -1018,7 +1018,7 @@ class CLIPTextEncodeSDXLSimplified:
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
         return ([[cond, {"pooled_output": pooled, "width": width, "height": height, "crop_w": crop_w, "crop_h": crop_h, "target_width": target_width, "target_height": target_height}]], )
 
-class KSamplerVariationsStocastic:
+class KSamplerVariationsStochastic:
     @classmethod
     def INPUT_TYPES(s):
         return {"required":{
@@ -1330,7 +1330,7 @@ NODE_CLASS_MAPPINGS = {
     "ModelCompile+": ModelCompile,
     "BatchCount+": BatchCount,
 
-    "KSamplerVariationsStocastic+": KSamplerVariationsStocastic,
+    "KSamplerVariationsStochastic+": KSamplerVariationsStochastic,
     "KSamplerVariationsWithNoise+": KSamplerVariationsWithNoise,
     "CLIPTextEncodeSDXL+": CLIPTextEncodeSDXLSimplified,
     "SDXLEmptyLatentSizePicker+": SDXLEmptyLatentSizePicker,
@@ -1371,7 +1371,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ModelCompile+": "🔧 Compile Model",
     "BatchCount+": "🔧 Batch Count",
 
-    "KSamplerVariationsStocastic+": "🔧 KSampler Stocastic Variations",
+    "KSamplerVariationsStochastic+": "🔧 KSampler Stochastic Variations",
     "KSamplerVariationsWithNoise+": "🔧 KSampler Variations with Noise Injection",
     "CLIPTextEncodeSDXL+": "🔧 SDXLCLIPTextEncode",
     "SDXLEmptyLatentSizePicker+": "🔧 SDXL Empty Latent Size Picker",
