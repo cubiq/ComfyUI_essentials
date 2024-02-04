@@ -6,14 +6,18 @@ import random
 import os
 import operator as op
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont, ImageColor, ImageFilter
 
 import torch
 import torch.nn.functional as F
 import torchvision.transforms.v2 as T
 
-from nodes import MAX_RESOLUTION, SaveImage
+from nodes import MAX_RESOLUTION, SaveImage, common_ksampler
 import folder_paths
 import comfy.utils
+import comfy.samplers
+
+STOCASTIC_SAMPLERS = ["euler_ancestral", "dpm_2_ancestral", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_sde_gpu", "dpmpp_2m_sde", "dpmpp_2m_sde_gpu", "dpmpp_3m_sde", "dpmpp_3m_sde_gpu", "ddpm"]
 
 def p(image):
     return image.permute([0,3,1,2])
@@ -326,61 +330,6 @@ class ExtractKeyframes:
 
         return (image[keyframes], ','.join(map(str, keyframes)),)
 
-"""
-class NoiseFromImage:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-                "noise_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
-                "adjust_levels": ("FLOAT", { "default": 1.00, "min": 0.00, "max": 20.00, "step": 0.05, }),
-                #"noise_intensity": ("FLOAT", { "default": 1.00, "min": 0.00, "max": 1.00, "step": 0.05, }),
-                "noise_density": ("FLOAT", { "default": 0.05, "min": 0.00, "max": 1.00, "step": 0.05, }),
-                "noise_scale": ("FLOAT", { "default": 0.2, "min": 0.00, "max": 1.00, "step": 0.05, }),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-
-    FUNCTION = "execute"
-    CATEGORY = "essentials"
-
-    def execute(self, image, noise_seed, adjust_levels, noise_density, noise_scale):
-        generator = torch.manual_seed(noise_seed)
-
-        image = image.mean(dim=3).unsqueeze(-1).repeat(1, 1, 1, 3)
-       
-        # Adjust image levels
-        image = (1 - adjust_levels) * torch.mean(image) + adjust_levels * image
-        image = torch.clamp(image, 0, 1)
-
-        # Create noise
-        fine_noise = torch.rand([image.shape[0], image.shape[1], image.shape[2], image.shape[3]], dtype=image.dtype, layout=image.layout, generator=generator, device="cpu")
-        fine_noise = fine_noise * (fine_noise > 1-noise_density).float() # Lower density
-        fine_noise = (fine_noise * 16).round() / 16
-        coarse_noise = F.interpolate(p(fine_noise), scale_factor=noise_scale, mode='bilinear', align_corners=False)
-        coarse_noise = F.interpolate(coarse_noise, size=(image.shape[1], image.shape[2]), mode='bilinear', align_corners=False)
-        coarse_noise = pb(coarse_noise)
-
-        # Merge noises
-        noise = ((1 - image) * coarse_noise + image * fine_noise)
-        noise = torch.clamp(noise, 0, 1)
-        noise = image * noise
-
-        # Change noise intensity
-        #noise = noise * noise_intensity
-        #print(noise.min(), noise.max())
-        #noise = torch.clamp(noise, 0, 1)
-
-        # Apply noise to image
-        #noise = torch.clamp((1-noise_intensity) * image + noise, 0, 1)
-
-        #out = image + fine_noise * mask * noise_intensity
-
-        return (noise,)
-"""
-
 class MaskFlip:
     @classmethod
     def INPUT_TYPES(s):
@@ -424,11 +373,9 @@ class MaskBlur:
         if size % 2 == 0:
             size+= 1
         
-        blurred = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])).movedim(1, -1).expand(-1, -1, -1, 1)
-        blurred = p(blurred)
+        blurred = mask.unsqueeze(1)
         blurred = T.GaussianBlur(size, amount)(blurred)
-        blurred = pb(blurred)
-        blurred = blurred[:, :, :, 0]
+        blurred = blurred.squeeze(1)
 
         return(blurred,)
 
@@ -1071,22 +1018,155 @@ class CLIPTextEncodeSDXLSimplified:
         cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
         return ([[cond, {"pooled_output": pooled, "width": width, "height": height, "crop_w": crop_w, "crop_h": crop_h, "target_width": target_width, "target_height": target_height}]], )
 
-class SDXLResolutionPicker:
+class KSamplerVariationsStocastic:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required":{
+                    "model": ("MODEL",),
+                    "latent_image": ("LATENT", ),
+                    "noise_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                    "steps": ("INT", {"default": 25, "min": 1, "max": 10000}),
+                    "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 100.0, "step":0.1, "round": 0.01}),
+                    "sampler": (comfy.samplers.KSampler.SAMPLERS, ),
+                    "scheduler": (comfy.samplers.KSampler.SCHEDULERS, ),
+                    "positive": ("CONDITIONING", ),
+                    "negative": ("CONDITIONING", ),
+                    "variation_seed": ("INT:seed", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                    "variation_strength": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 1.0, "step":0.05, "round": 0.01}),
+                    #"variation_sampler": (comfy.samplers.KSampler.SAMPLERS, ),
+                    "cfg_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step":0.05, "round": 0.01}),
+                }}
+
+    RETURN_TYPES = ("LATENT", )
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, model, latent_image, noise_seed, steps, cfg, sampler, scheduler, positive, negative, variation_seed, variation_strength, cfg_scale, variation_sampler="dpmpp_2m_sde"):
+        # Stage 1: composition sampler
+        force_full_denoise = False # return with leftover noise = "enable"
+        disable_noise = False # add noise = "enable"
+
+        end_at_step = max(int(steps * (1-variation_strength)), 1)
+        start_at_step = 0
+
+        work_latent = latent_image.copy()
+        batch_size = work_latent["samples"].shape[0]
+        work_latent["samples"] = work_latent["samples"][0].unsqueeze(0)
+
+        stage1 = common_ksampler(model, noise_seed, steps, cfg, sampler, scheduler, positive, negative, work_latent, denoise=1.0, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)[0]
+        
+        if batch_size > 1:
+            stage1["samples"] = stage1["samples"].clone().repeat(batch_size, 1, 1, 1)
+
+        # Stage 2: variation sampler
+        force_full_denoise = True
+        disable_noise = True
+        cfg = max(cfg * cfg_scale, 1.0)
+        start_at_step = end_at_step
+        end_at_step = steps
+
+        return common_ksampler(model, variation_seed, steps, cfg, variation_sampler, scheduler, positive, negative, stage1, denoise=1.0, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)
+
+# From https://github.com/BlenderNeko/ComfyUI_Noise/
+def slerp(val, low, high):
+    dims = low.shape
+
+    low = low.reshape(dims[0], -1)
+    high = high.reshape(dims[0], -1)
+
+    low_norm = low/torch.norm(low, dim=1, keepdim=True)
+    high_norm = high/torch.norm(high, dim=1, keepdim=True)
+
+    low_norm[low_norm != low_norm] = 0.0
+    high_norm[high_norm != high_norm] = 0.0
+
+    omega = torch.acos((low_norm*high_norm).sum(1))
+    so = torch.sin(omega)
+    res = (torch.sin((1.0-val)*omega)/so).unsqueeze(1)*low + (torch.sin(val*omega)/so).unsqueeze(1) * high
+
+    return res.reshape(dims)
+
+class KSamplerVariationsWithNoise:       
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+                    "model": ("MODEL", ),
+                    "latent_image": ("LATENT", ),
+                    "main_seed": ("INT:seed", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                    "steps": ("INT", {"default": 20, "min": 1, "max": 10000}),
+                    "cfg": ("FLOAT", {"default": 8.0, "min": 0.0, "max": 100.0, "step":0.1, "round": 0.01}),
+                    "sampler_name": (comfy.samplers.KSampler.SAMPLERS, ),
+                    "scheduler": (comfy.samplers.KSampler.SCHEDULERS, ),
+                    "positive": ("CONDITIONING", ),
+                    "negative": ("CONDITIONING", ),
+                    "variation_strength": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 1.0, "step":0.01, "round": 0.01}),
+                    #"start_at_step": ("INT", {"default": 0, "min": 0, "max": 10000}),
+                    #"end_at_step": ("INT", {"default": 10000, "min": 0, "max": 10000}),
+                    #"return_with_leftover_noise": (["disable", "enable"], ),
+                    "variation_seed": ("INT:seed", {"default": random.randint(0, 0xffffffffffffffff), "min": 0, "max": 0xffffffffffffffff}),
+                }}
+
+    RETURN_TYPES = ("LATENT",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, model, latent_image, main_seed, steps, cfg, sampler_name, scheduler, positive, negative, variation_strength, variation_seed):
+        generator = torch.manual_seed(main_seed)
+        batch_size, _, height, width = latent_image["samples"].shape
+        base_noise = torch.randn((1, 4, height, width), dtype=torch.float32, device="cpu", generator=generator).repeat(batch_size, 1, 1, 1).cpu()
+
+        generator = torch.manual_seed(variation_seed)
+        variation_noise = torch.randn((batch_size, 4, height, width), dtype=torch.float32, device="cpu", generator=generator).cpu()
+
+        slerp_noise = slerp(variation_strength, base_noise, variation_noise)
+
+        device = comfy.model_management.get_torch_device()
+        end_at_step = steps #min(steps, end_at_step)
+        start_at_step = 0 #min(start_at_step, end_at_step)
+        real_model = None
+        comfy.model_management.load_model_gpu(model)
+        real_model = model.model
+        sampler = comfy.samplers.KSampler(real_model, steps=steps, device=device, sampler=sampler_name, scheduler=scheduler, denoise=1.0, model_options=model.model_options)
+        sigmas = sampler.sigmas
+        sigma = sigmas[start_at_step] - sigmas[end_at_step]
+        sigma /= model.model.latent_format.scale_factor
+        sigma = sigma.cpu().numpy()
+
+        work_latent = latent_image.copy()
+        work_latent["samples"] = latent_image["samples"].clone() + slerp_noise * sigma
+
+        force_full_denoise = True
+        #if return_with_leftover_noise == "enable":
+        #    force_full_denoise = False
+
+        disable_noise = True
+
+        return common_ksampler(model, main_seed, steps, cfg, sampler_name, scheduler, positive, negative, work_latent, denoise=1.0, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)
+
+class SDXLEmptyLatentSizePicker:
+    def __init__(self):
+        self.device = comfy.model_management.intermediate_device()
+ 
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {
             "resolution": (["704x1408 (0.5)","704x1344 (0.52)","768x1344 (0.57)","768x1280 (0.6)","832x1216 (0.68)","832x1152 (0.72)","896x1152 (0.78)","896x1088 (0.82)","960x1088 (0.88)","960x1024 (0.94)","1024x1024 (1.0)","1024x960 (1.07)","1088x960 (1.13)","1088x896 (1.21)","1152x896 (1.29)","1152x832 (1.38)","1216x832 (1.46)","1280x768 (1.67)","1344x768 (1.75)","1344x704 (1.91)","1408x704 (2.0)","1472x704 (2.09)","1536x640 (2.4)","1600x640 (2.5)","1664x576 (2.89)","1728x576 (3.0)",], {"default": "1024x1024 (1.0)"}),
+            "batch_size": ("INT", {"default": 1, "min": 1, "max": 4096}),
             }}
 
-    RETURN_TYPES = ("INT","INT",)
-    RETURN_NAMES = ("width", "height",)
+    RETURN_TYPES = ("LATENT","INT","INT",)
+    RETURN_NAMES = ("LATENT","width", "height",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, resolution):
+    def execute(self, resolution, batch_size):
         width, height = resolution.split(" ")[0].split("x")
+        width = int(width)
+        height = int(height)
 
-        return (width, height,)
+        latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=self.device)
+
+        return (latent, width, height,)
 
 LUTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "luts")
 # From https://github.com/yoonsikp/pycubelut/blob/master/pycubelut.py (MIT license)
@@ -1125,7 +1205,7 @@ class ImageApplyLUT:
                         lut.table[:, :, :, dim] = np.clip(lut.table[:, :, :, dim], lut.domain[0, dim], lut.domain[1, dim])
 
         out = []
-        for img in image: # TODO: is this more resrouce efficient? should we use a batch instead?
+        for img in image: # TODO: is this more resource efficient? should we use a batch instead?
             lut_img = img.numpy().copy()
 
             is_non_default_domain = not np.array_equal(lut.domain, np.array([[0., 0., 0.], [1., 1., 1.]]))
@@ -1150,6 +1230,72 @@ class ImageApplyLUT:
 
         return (out, )
 
+FONTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts")
+class DrawText:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "text": ("STRING", { "multiline": True, "default": "Hello, World!" }),
+                "font": ([f for f in os.listdir(FONTS_DIR) if f.endswith('.ttf') or f.endswith('.otf')], ),
+                "size": ("INT", { "default": 56, "min": 1, "max": 9999, "step": 1 }),
+                "color": ("STRING", { "multiline": False, "default": "#FFFFFF" }),
+                "background_color": ("STRING", { "multiline": False, "default": "#00000000" }),
+                "shadow_distance": ("INT", { "default": 0, "min": 0, "max": 100, "step": 1 }),
+                "shadow_blur": ("INT", { "default": 0, "min": 0, "max": 100, "step": 1 }),
+                "shadow_color": ("STRING", { "multiline": False, "default": "#000000" }),
+                "alignment": (["left", "center", "right"],),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "MASK",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, text, font, size, color, background_color, shadow_distance, shadow_blur, shadow_color, alignment):
+        font = ImageFont.truetype(os.path.join(FONTS_DIR, font), size)
+        
+        lines = text.split("\n")
+
+        # Calculate the width and height of the text
+        width = max(font.getbbox(line)[2] for line in lines)
+        line_height = font.getmask(text).getbbox()[3] + font.getmetrics()[1]  # add descent to height
+        height = line_height * len(lines)
+
+        background_color = ImageColor.getrgb(background_color)
+        image = Image.new('RGBA', (width + shadow_distance, height + shadow_distance), color=background_color)
+
+        image_shadow = None
+        if shadow_distance > 0:
+            image_shadow = Image.new('RGBA', (width + shadow_distance, height + shadow_distance), color=background_color)
+
+        for i, line in enumerate(lines):
+            line_width = font.getbbox(line)[2]
+            #text_height =font.getbbox(line)[3]
+            if alignment == "left":
+                x = 0
+            elif alignment == "center":
+                x = (width - line_width) / 2
+            elif alignment == "right":
+                x = width - line_width
+            y = i * line_height
+
+            draw = ImageDraw.Draw(image)
+            draw.text((x, y), line, font=font, fill=color)
+            
+            if image_shadow is not None:
+                draw = ImageDraw.Draw(image_shadow)
+                draw.text((x + shadow_distance, y + shadow_distance), line, font=font, fill=shadow_color)
+
+        if image_shadow is not None:
+            image_shadow = image_shadow.filter(ImageFilter.GaussianBlur(shadow_blur))
+            image = Image.alpha_composite(image_shadow, image)
+
+        image = pb(T.ToTensor()(image).unsqueeze(0))
+        mask = image[:, :, :, 3] if image.shape[3] == 4 else torch.ones_like(image[:, :, :, 0])
+
+        return (image[:, :, :, :3], mask,)
+
 NODE_CLASS_MAPPINGS = {
     "GetImageSize+": GetImageSize,
 
@@ -1167,7 +1313,6 @@ NODE_CLASS_MAPPINGS = {
     "ImageCompositeFromMaskBatch+": ImageCompositeFromMaskBatch,
     "ExtractKeyframes+": ExtractKeyframes,
     "ImageApplyLUT+": ImageApplyLUT,
-    #"NoiseFromImage+": NoiseFromImage,
 
     "MaskBlur+": MaskBlur,
     "MaskFlip+": MaskFlip,
@@ -1185,8 +1330,12 @@ NODE_CLASS_MAPPINGS = {
     "ModelCompile+": ModelCompile,
     "BatchCount+": BatchCount,
 
+    "KSamplerVariationsStocastic+": KSamplerVariationsStocastic,
+    "KSamplerVariationsWithNoise+": KSamplerVariationsWithNoise,
     "CLIPTextEncodeSDXL+": CLIPTextEncodeSDXLSimplified,
-    "SDXLResolutionPicker+": SDXLResolutionPicker,
+    "SDXLEmptyLatentSizePicker+": SDXLEmptyLatentSizePicker,
+
+    "DrawText+": DrawText,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1205,7 +1354,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageCompositeFromMaskBatch+": "🔧 Image Composite From Mask Batch",
     "ExtractKeyframes+": "🔧 Extract Keyframes (experimental)",
     "ImageApplyLUT+": "🔧 Image Apply LUT",
-    #"NoiseFromImage+": "🔧 Noise From Image",
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
@@ -1223,6 +1371,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ModelCompile+": "🔧 Compile Model",
     "BatchCount+": "🔧 Batch Count",
 
+    "KSamplerVariationsStocastic+": "🔧 KSampler Stocastic Variations",
+    "KSamplerVariationsWithNoise+": "🔧 KSampler Variations with Noise Injection",
     "CLIPTextEncodeSDXL+": "🔧 SDXLCLIPTextEncode",
-    "SDXLResolutionPicker+": "🔧 SDXL Resolutions",
+    "SDXLEmptyLatentSizePicker+": "🔧 SDXL Empty Latent Size Picker",
+
+    "DrawText+": "🔧 Draw Text",
 }
