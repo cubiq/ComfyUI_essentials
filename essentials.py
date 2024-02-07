@@ -7,6 +7,7 @@ import os
 import operator as op
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageColor, ImageFilter
+import io
 
 import torch
 import torch.nn.functional as F
@@ -1054,7 +1055,7 @@ class KSamplerVariationsStochastic:
         work_latent["samples"] = work_latent["samples"][0].unsqueeze(0)
 
         stage1 = common_ksampler(model, noise_seed, steps, cfg, sampler, scheduler, positive, negative, work_latent, denoise=1.0, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)[0]
-        
+        print(stage1)
         if batch_size > 1:
             stage1["samples"] = stage1["samples"].clone().repeat(batch_size, 1, 1, 1)
 
@@ -1245,6 +1246,8 @@ class DrawText:
                 "shadow_blur": ("INT", { "default": 0, "min": 0, "max": 100, "step": 1 }),
                 "shadow_color": ("STRING", { "multiline": False, "default": "#000000" }),
                 "alignment": (["left", "center", "right"],),
+                "width": ("INT", { "default": 0, "min": 0, "max": MAX_RESOLUTION, "step": 1 }),
+                "height": ("INT", { "default": 0, "min": 0, "max": MAX_RESOLUTION, "step": 1 }),
             },
         }
 
@@ -1252,15 +1255,18 @@ class DrawText:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, text, font, size, color, background_color, shadow_distance, shadow_blur, shadow_color, alignment):
+    def execute(self, text, font, size, color, background_color, shadow_distance, shadow_blur, shadow_color, alignment, width, height):
         font = ImageFont.truetype(os.path.join(FONTS_DIR, font), size)
         
         lines = text.split("\n")
 
         # Calculate the width and height of the text
-        width = max(font.getbbox(line)[2] for line in lines)
+        text_width = max(font.getbbox(line)[2] for line in lines)
         line_height = font.getmask(text).getbbox()[3] + font.getmetrics()[1]  # add descent to height
-        height = line_height * len(lines)
+        text_height = line_height * len(lines)
+
+        width = width if width > 0 else text_width
+        height = height if height > 0 else text_height
 
         background_color = ImageColor.getrgb(background_color)
         image = Image.new('RGBA', (width + shadow_distance, height + shadow_distance), color=background_color)
@@ -1295,6 +1301,56 @@ class DrawText:
         mask = image[:, :, :, 3] if image.shape[3] == 4 else torch.ones_like(image[:, :, :, 0])
 
         return (image[:, :, :, :3], mask,)
+
+class RemBGSession:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": (["u2net: general purpose", "u2netp: lightweight general purpose", "u2net_human_seg: human segmentation", "u2net_cloth_seg: cloths Parsing", "silueta: very small u2net", "isnet-general-use: general purpose", "isnet-anime: anime illustrations", "sam: general purpose"],),
+                "providers": (['CPU', 'CUDA', 'ROCM', 'DirectML', 'OpenVINO', 'CoreML', 'Tensorrt', 'Azure'],),
+            },
+        }
+
+    RETURN_TYPES = ("REMBG_SESSION",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, model, providers):
+        from rembg import new_session as rembg_new_session
+
+        model = model.split(":")[0]
+        return (rembg_new_session(model, providers=[providers+"ExecutionProvider"]),)
+
+class ImageRemoveBackground:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "rembg_session": ("REMBG_SESSION",),
+                "image": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "MASK",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, rembg_session, image):
+        from rembg import remove as rembg
+
+        image = p(image)
+        output = []
+        for img in image:
+            img = T.ToPILImage()(img)
+            img = rembg(img, session=rembg_session)
+            output.append(T.ToTensor()(img))
+
+        output = torch.stack(output, dim=0)
+        output = pb(output)
+        mask = output[:, :, :, 3] if output.shape[3] == 4 else torch.ones_like(output[:, :, :, 0])
+
+        return(output[:, :, :, :3], mask,)
 
 NODE_CLASS_MAPPINGS = {
     "GetImageSize+": GetImageSize,
@@ -1336,6 +1392,8 @@ NODE_CLASS_MAPPINGS = {
     "SDXLEmptyLatentSizePicker+": SDXLEmptyLatentSizePicker,
 
     "DrawText+": DrawText,
+    "RemBGSession+": RemBGSession,
+    "ImageRemoveBackground+": ImageRemoveBackground,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1362,7 +1420,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MaskExpandBatch+": "🔧 Mask Expand Batch",
     "TransitionMask+": "🔧 Transition Mask",
     "MaskFromColor+": "🔧 Mask From Color",
-    "MaskFromBatch+": "🔧 MaskFromBatch",
+    "MaskFromBatch+": "🔧 Mask From Batch",
 
     "SimpleMath+": "🔧 Simple Math",
     "ConsoleDebug+": "🔧 Console Debug",
@@ -1377,4 +1435,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "SDXLEmptyLatentSizePicker+": "🔧 SDXL Empty Latent Size Picker",
 
     "DrawText+": "🔧 Draw Text",
+    "RemBGSession+": "🔧 RemBG Session",
+    "ImageRemoveBackground+": "🔧 Image Remove Background",
 }
