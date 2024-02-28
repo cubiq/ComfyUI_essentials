@@ -992,6 +992,7 @@ class CLIPTextEncodeSDXLSimplified:
         return {"required": {
             "width": ("INT", {"default": 1024.0, "min": 0, "max": MAX_RESOLUTION}),
             "height": ("INT", {"default": 1024.0, "min": 0, "max": MAX_RESOLUTION}),
+            "size_cond_factor": ("INT", {"default": 4, "min": 1, "max": 16 }),
             "text": ("STRING", {"multiline": True, "default": ""}),
             "clip": ("CLIP", ),
             }}
@@ -999,11 +1000,11 @@ class CLIPTextEncodeSDXLSimplified:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, clip, width, height, text):
+    def execute(self, clip, width, height, size_cond_factor, text):
         crop_w = 0
         crop_h = 0
-        width = width*4
-        height = height*4
+        width = width*size_cond_factor
+        height = height*size_cond_factor
         target_width = width
         target_height = height
         text_g = text_l = text
