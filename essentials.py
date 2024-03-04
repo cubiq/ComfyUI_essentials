@@ -6,6 +6,7 @@ import random
 import os
 import operator as op
 import numpy as np
+import scipy
 from PIL import Image, ImageDraw, ImageFont, ImageColor, ImageFilter
 import io
 
@@ -17,6 +18,7 @@ from nodes import MAX_RESOLUTION, SaveImage, common_ksampler
 import folder_paths
 import comfy.utils
 import comfy.samplers
+import comfy.sample
 
 STOCHASTIC_SAMPLERS = ["euler_ancestral", "dpm_2_ancestral", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_sde_gpu", "dpmpp_2m_sde", "dpmpp_2m_sde_gpu", "dpmpp_3m_sde", "dpmpp_3m_sde_gpu", "ddpm"]
 
@@ -1088,6 +1090,32 @@ def slerp(val, low, high):
 
     return res.reshape(dims)
 
+def prepare_mask(mask, shape):
+    mask = torch.nn.functional.interpolate(mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])), size=(shape[2], shape[3]), mode="bilinear")
+    mask = mask.expand((-1,shape[1],-1,-1))
+    if mask.shape[0] < shape[0]:
+        mask = mask.repeat((shape[0] -1) // mask.shape[0] + 1, 1, 1, 1)[:shape[0]]
+    return mask
+
+def expand_mask(mask, expand, tapered_corners):
+    c = 0 if tapered_corners else 1
+    kernel = np.array([[c, 1, c],
+                       [1, 1, 1],
+                       [c, 1, c]])
+    mask = mask.reshape((-1, mask.shape[-2], mask.shape[-1]))
+    out = []
+    for m in mask:
+        output = m.numpy()
+        for _ in range(abs(expand)):
+            if expand < 0:
+                output = scipy.ndimage.grey_erosion(output, footprint=kernel)
+            else:
+                output = scipy.ndimage.grey_dilation(output, footprint=kernel)
+        output = torch.from_numpy(output)
+        out.append(output)
+
+    return torch.stack(out, dim=0)
+
 class KSamplerVariationsWithNoise:       
     @classmethod
     def INPUT_TYPES(s):
@@ -1101,31 +1129,42 @@ class KSamplerVariationsWithNoise:
                     "scheduler": (comfy.samplers.KSampler.SCHEDULERS, ),
                     "positive": ("CONDITIONING", ),
                     "negative": ("CONDITIONING", ),
-                    "variation_strength": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 1.0, "step":0.01, "round": 0.01}),
+                    "variation_strength": ("FLOAT", {"default": 0.17, "min": 0.0, "max": 1.0, "step":0.01, "round": 0.01}),
                     #"start_at_step": ("INT", {"default": 0, "min": 0, "max": 10000}),
                     #"end_at_step": ("INT", {"default": 10000, "min": 0, "max": 10000}),
                     #"return_with_leftover_noise": (["disable", "enable"], ),
-                    "variation_seed": ("INT:seed", {"default": random.randint(0, 0xffffffffffffffff), "min": 0, "max": 0xffffffffffffffff}),
+                    "variation_seed": ("INT:seed", {"default": 12345, "min": 0, "max": 0xffffffffffffffff}),
+                    "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step":0.01, "round": 0.01}),
                 }}
 
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, model, latent_image, main_seed, steps, cfg, sampler_name, scheduler, positive, negative, variation_strength, variation_seed):
-        generator = torch.manual_seed(main_seed)
+    def execute(self, model, latent_image, main_seed, steps, cfg, sampler_name, scheduler, positive, negative, variation_strength, variation_seed, denoise):
+        if main_seed == variation_seed:
+            variation_seed += 1
+
+        end_at_step = steps #min(steps, end_at_step)
+        start_at_step = round(end_at_step - end_at_step * denoise)
+
+        force_full_denoise = True
+        disable_noise = True
+
+        device = comfy.model_management.get_torch_device()
+
+        # Generate base noise
         batch_size, _, height, width = latent_image["samples"].shape
+        generator = torch.manual_seed(main_seed)
         base_noise = torch.randn((1, 4, height, width), dtype=torch.float32, device="cpu", generator=generator).repeat(batch_size, 1, 1, 1).cpu()
 
+        # Generate variation noise
         generator = torch.manual_seed(variation_seed)
         variation_noise = torch.randn((batch_size, 4, height, width), dtype=torch.float32, device="cpu", generator=generator).cpu()
 
         slerp_noise = slerp(variation_strength, base_noise, variation_noise)
 
-        device = comfy.model_management.get_torch_device()
-        end_at_step = steps #min(steps, end_at_step)
-        start_at_step = 0 #min(start_at_step, end_at_step)
-        real_model = None
+        # Calculate sigma
         comfy.model_management.load_model_gpu(model)
         real_model = model.model
         sampler = comfy.samplers.KSampler(real_model, steps=steps, device=device, sampler=sampler_name, scheduler=scheduler, denoise=1.0, model_options=model.model_options)
@@ -1137,11 +1176,11 @@ class KSamplerVariationsWithNoise:
         work_latent = latent_image.copy()
         work_latent["samples"] = latent_image["samples"].clone() + slerp_noise * sigma
 
-        force_full_denoise = True
-        #if return_with_leftover_noise == "enable":
-        #    force_full_denoise = False
-
-        disable_noise = True
+        # if there's a mask we need to expand it to avoid artifacts, 5 pixels should be enough
+        if "noise_mask" in latent_image:
+            noise_mask = prepare_mask(latent_image["noise_mask"], latent_image['samples'].shape)
+            work_latent["samples"] = noise_mask * work_latent["samples"] + (1-noise_mask) * latent_image["samples"]
+            work_latent['noise_mask'] = expand_mask(latent_image["noise_mask"].clone(), 5, True)
 
         return common_ksampler(model, main_seed, steps, cfg, sampler_name, scheduler, positive, negative, work_latent, denoise=1.0, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)
 
