@@ -62,7 +62,8 @@ class ImageResize:
                 "height": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
                 "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
                 "keep_proportion": ("BOOLEAN", { "default": False }),
-                "condition": (["always", "only if bigger", "only if smaller"],),
+                "condition": (["always", "downscale if bigger", "upscale if smaller"],),
+                "multiple_of": ("INT", { "default": 0, "min": 0, "max": 512, "step": 1, }),
             }
         }
 
@@ -71,10 +72,10 @@ class ImageResize:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, image, width, height, keep_proportion, interpolation="nearest", condition="always"):
-        if keep_proportion is True:
-            _, oh, ow, _ = image.shape
+    def execute(self, image, width, height, keep_proportion, interpolation="nearest", condition="always", multiple_of=0):
+        _, oh, ow, _ = image.shape
 
+        if keep_proportion is True:
             if width == 0 and oh < height:
                 width = MAX_RESOLUTION
             elif width == 0 and oh >= height:
@@ -90,6 +91,15 @@ class ImageResize:
             ratio = min(width / ow, height / oh)
             width = round(ow*ratio)
             height = round(oh*ratio)
+        else:
+            if width == 0:
+                width = ow
+            if height == 0:
+                height = oh
+        
+        if multiple_of > 1:
+            width = width - (width % multiple_of)
+            height = height - (height % multiple_of)
 
         outputs = p(image)
 
