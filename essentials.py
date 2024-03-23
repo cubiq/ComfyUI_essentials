@@ -310,6 +310,36 @@ class ImageExpandBatch:
 
         return (out,)
 
+class ImageListToBatch:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+            }
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    INPUT_IS_LIST = True
+    CATEGORY = "essentials"
+
+    def execute(self, image):
+        shape = image[0].shape[1:3]
+
+        for i in range(len(image)):
+            if image[i].shape[1:3] != shape:
+                img = p(image[i])
+                transforms = T.Compose([
+                    T.CenterCrop((shape[0], shape[1])),
+                    T.Resize((shape[0], shape[1]), interpolation=T.InterpolationMode.BICUBIC),
+                ])
+                image[i] = pb(transforms(img))
+
+        image = torch.cat(image, dim=0)
+        
+        return (image,)
+
 class ExtractKeyframes:
     @classmethod
     def INPUT_TYPES(s):
@@ -1544,6 +1574,7 @@ NODE_CLASS_MAPPINGS = {
     "ImageEnhanceDifference+": ImageEnhanceDifference,
     "ImageExpandBatch+": ImageExpandBatch,
     "ImageFromBatch+": ImageFromBatch,
+    "ImageListToBatch+": ImageListToBatch,
     "ImageCompositeFromMaskBatch+": ImageCompositeFromMaskBatch,
     "ExtractKeyframes+": ExtractKeyframes,
     "ImageApplyLUT+": ImageApplyLUT,
@@ -1591,6 +1622,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageEnhanceDifference+": "🔧 Image Enhance Difference",
     "ImageExpandBatch+": "🔧 Image Expand Batch",
     "ImageFromBatch+": "🔧 Image From Batch",
+    "ImageListToBatch+": "🔧 Image List To Batch",
     "ImageCompositeFromMaskBatch+": "🔧 Image Composite From Mask Batch",
     "ExtractKeyframes+": "🔧 Extract Keyframes (experimental)",
     "ImageApplyLUT+": "🔧 Image Apply LUT",
