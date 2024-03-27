@@ -326,19 +326,22 @@ class ImageListToBatch:
 
     def execute(self, image):
         shape = image[0].shape[1:3]
+        out = []
 
         for i in range(len(image)):
+            img = p(image[i])
             if image[i].shape[1:3] != shape:
-                img = p(image[i])
                 transforms = T.Compose([
-                    T.CenterCrop((shape[0], shape[1])),
+                    T.CenterCrop(min(img.shape[2], img.shape[3])),
                     T.Resize((shape[0], shape[1]), interpolation=T.InterpolationMode.BICUBIC),
                 ])
-                image[i] = pb(transforms(img))
+                img = transforms(img)
+            out.append(pb(img))
+            #image[i] = pb(transforms(img))
 
-        image = torch.cat(image, dim=0)
+        out = torch.cat(out, dim=0)
         
-        return (image,)
+        return (out,)
 
 class ExtractKeyframes:
     @classmethod
