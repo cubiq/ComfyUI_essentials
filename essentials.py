@@ -1435,6 +1435,49 @@ class ImageRemoveBackground:
 
         return(output[:, :, :, :3], mask,)
 
+class PixelOEPixelize:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "downscale_mode": (["contrast", "bicubic", "nearest", "center", "k-centroid"],),
+                "target_size": ("INT", { "default": 128, "min": 1, "max": MAX_RESOLUTION, "step": 16 }),
+                "patch_size": ("INT", { "default": 16, "min": 4, "max": 32, "step": 1 }),
+                "thickness": ("INT", { "default": 2, "min": 1, "max": 16, "step": 1 }),
+                #"contrast": ("FLOAT", { "default": 1.0, "min": 0.0, "max": 100.0, "step": 0.1 }),
+                #"saturation": ("FLOAT", { "default": 1.0, "min": 0.0, "max": 100.0, "step": 0.1 }),
+                "color_matching": ("BOOLEAN", { "default": True }),
+                "upscale": ("BOOLEAN", { "default": True }),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image, downscale_mode, target_size, patch_size, thickness, color_matching, upscale):
+        from pixeloe import pixelize
+
+        image = image.clone().mul(255).clamp(0, 255).byte().cpu().numpy()
+        output = []
+        for img in image:
+            img = pixelize(img,
+                           mode=downscale_mode,
+                           target_size=target_size,
+                           patch_size=patch_size,
+                           thickness=thickness,
+                           contrast=1.0,
+                           saturation=1.0,
+                           color_matching=color_matching,
+                           no_upscale=not upscale)
+            output.append(T.ToTensor()(img))
+
+        output = torch.stack(output, dim=0)
+        output = pb(output)
+
+        return(output,)
+
 class NoiseFromImage:
     @classmethod
     def INPUT_TYPES(s):
@@ -1581,6 +1624,7 @@ NODE_CLASS_MAPPINGS = {
     "ImageCompositeFromMaskBatch+": ImageCompositeFromMaskBatch,
     "ExtractKeyframes+": ExtractKeyframes,
     "ImageApplyLUT+": ImageApplyLUT,
+    "PixelOEPixelize+": PixelOEPixelize,
 
     "MaskBlur+": MaskBlur,
     "MaskFlip+": MaskFlip,
@@ -1629,6 +1673,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageCompositeFromMaskBatch+": "🔧 Image Composite From Mask Batch",
     "ExtractKeyframes+": "🔧 Extract Keyframes (experimental)",
     "ImageApplyLUT+": "🔧 Image Apply LUT",
+    "PixelOEPixelize+": "🔧 Pixelize",
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
