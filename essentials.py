@@ -96,7 +96,7 @@ class ImageResize:
                 width = ow
             if height == 0:
                 height = oh
-        
+
         if multiple_of > 1:
             width = width - (width % multiple_of)
             height = height - (height % multiple_of)
@@ -108,7 +108,7 @@ class ImageResize:
                 outputs = comfy.utils.lanczos(outputs, width, height)
             else:
                 outputs = F.interpolate(outputs, size=(height, width), mode=interpolation)
-        
+
         outputs = pb(outputs)
 
         return(outputs, outputs.shape[2], outputs.shape[1],)
@@ -122,7 +122,7 @@ class ImageFlip:
                 "axis": (["x", "y", "xy"],),
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -150,7 +150,7 @@ class ImageCrop:
                 "y_offset": ("INT", { "default": 0, "min": -99999, "step": 1, }),
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE","INT","INT",)
     RETURN_NAMES = ("IMAGE","x","y",)
     FUNCTION = "execute"
@@ -161,7 +161,7 @@ class ImageCrop:
 
         width = min(ow, width)
         height = min(oh, height)
-                
+
         if "center" in position:
             x = round((ow-width) / 2)
             y = round((oh-height) / 2)
@@ -173,10 +173,10 @@ class ImageCrop:
             x = 0
         if "right" in position:
             x = ow-width
-        
+
         x += x_offset
         y += y_offset
-        
+
         x2 = x+width
         y2 = y+height
 
@@ -202,7 +202,7 @@ class ImageDesaturate:
                 "factor": ("FLOAT", { "default": 1.00, "min": 0.00, "max": 1.00, "step": 0.05, }),
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -221,7 +221,7 @@ class ImagePosterize:
                 "threshold": ("FLOAT", { "default": 0.50, "min": 0.00, "max": 1.00, "step": 0.05, }),
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -244,7 +244,7 @@ class ImageEnhanceDifference:
                 "exponent": ("FLOAT", { "default": 0.75, "min": 0.00, "max": 1.00, "step": 0.05, }),
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -271,7 +271,7 @@ class ImageExpandBatch:
                 "method": (["expand", "repeat all", "repeat first", "repeat last"],)
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -318,7 +318,7 @@ class ImageListToBatch:
                 "image": ("IMAGE",),
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     INPUT_IS_LIST = True
@@ -340,7 +340,7 @@ class ImageListToBatch:
             #image[i] = pb(transforms(img))
 
         out = torch.cat(out, dim=0)
-        
+
         return (out,)
 
 class ExtractKeyframes:
@@ -385,7 +385,7 @@ class MaskFlip:
                 "axis": (["x", "y", "xy"],),
             }
         }
-    
+
     RETURN_TYPES = ("MASK",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -409,7 +409,7 @@ class MaskBlur:
                 "amount": ("FLOAT", { "default": 6.0, "min": 0, "step": 0.5, }),
             }
         }
-    
+
     RETURN_TYPES = ("MASK",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -418,7 +418,7 @@ class MaskBlur:
         size = int(6 * amount +1)
         if size % 2 == 0:
             size+= 1
-        
+
         blurred = mask.unsqueeze(1)
         blurred = T.GaussianBlur(size, amount)(blurred)
         blurred = blurred.squeeze(1)
@@ -431,14 +431,14 @@ class MaskPreview(SaveImage):
         self.type = "temp"
         self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
         self.compress_level = 4
-    
+
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {"mask": ("MASK",), },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
-    
+
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
@@ -455,7 +455,7 @@ class MaskBatch:
                 "mask2": ("MASK",),
             }
         }
-    
+
     RETURN_TYPES = ("MASK",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -463,7 +463,7 @@ class MaskBatch:
     def execute(self, mask1, mask2):
         if mask1.shape[1:] != mask2.shape[1:]:
             mask2 = F.interpolate(mask2.unsqueeze(1), size=(mask1.shape[1], mask1.shape[2]), mode="bicubic").squeeze(1)
-            
+
         out = torch.cat((mask1, mask2), dim=0)
         return (out,)
 
@@ -477,7 +477,7 @@ class MaskExpandBatch:
                 "method": (["expand", "repeat all", "repeat first", "repeat last"],)
             }
         }
-    
+
     RETURN_TYPES = ("MASK",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -532,7 +532,7 @@ class MaskFromColor:
                 "threshold": ("INT", { "default": 0, "min": 0, "max": 127, "step": 1, }),
             }
         }
-    
+
     RETURN_TYPES = ("MASK",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -560,7 +560,7 @@ class MaskFromBatch:
                 "length": ("INT", { "default": -1, "min": -1, "step": 1, }),
             }
         }
-    
+
     RETURN_TYPES = ("MASK",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -582,7 +582,7 @@ class ImageFromBatch:
                 "length": ("INT", { "default": -1, "min": -1, "step": 1, }),
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -604,7 +604,7 @@ class ImageCompositeFromMaskBatch:
                 "mask": ("MASK", )
             }
         }
-    
+
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -616,12 +616,12 @@ class ImageCompositeFromMaskBatch:
             image_to = p(image_to)
             image_to = comfy.utils.common_upscale(image_to, image_from.shape[2], image_from.shape[1], upscale_method='bicubic', crop='center')
             image_to = pb(image_to)
-               
+
         if frames < image_from.shape[0]:
             image_from = image_from[:frames]
         elif frames > image_from.shape[0]:
             image_from = torch.cat((image_from, image_from[-1].unsqueeze(0).repeat(frames-image_from.shape[0], 1, 1, 1)), dim=0)
-        
+
         mask = mask.unsqueeze(3).repeat(1, 1, 1, 3)
 
         if image_from.shape[1] != mask.shape[1] or image_from.shape[2] != mask.shape[2]:
@@ -647,7 +647,7 @@ class TransitionMask:
                 "timing_function": (["linear", "in", "out", "in-out"],)
             }
         }
-    
+
     RETURN_TYPES = ("MASK",)
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -727,12 +727,12 @@ class TransitionMask:
                 frame[:,:] = progress
 
             out.append(frame)
-        
+
         if end_frame < frames:
             out = out + [torch.full((height, width), 1.0, dtype=torch.float32, device="cpu")] * (frames - end_frame)
 
         out = torch.stack(out, dim=0)
-           
+
         return (out, )
 
 def min_(tensor_list):
@@ -740,7 +740,7 @@ def min_(tensor_list):
     x = torch.stack(tensor_list)
     mn = x.min(axis=0)[0]
     return torch.clamp(mn, min=0)
-    
+
 def max_(tensor_list):
     # return the element-wise max of the tensor list.
     x = torch.stack(tensor_list)
@@ -774,22 +774,22 @@ class ImageCAS:
         g = img[..., 2:, :-2]
         h = img[..., 2:, 1:-1]
         i = img[..., 2:, 2:]
-        
+
         # Computing contrast
         cross = (b, d, e, f, h)
         mn = min_(cross)
         mx = max_(cross)
-        
+
         diag = (a, c, g, i)
         mn2 = min_(diag)
         mx2 = max_(diag)
         mx = mx + mx2
         mn = mn + mn2
-        
+
         # Computing local weight
         inv_mx = torch.reciprocal(mx + EPSILON)
         amp = inv_mx * torch.minimum(mn, (2 - mx))
-    
+
         # scaling
         amp = torch.sqrt(amp)
         w = - amp * (amount * (1/5 - 1/8) + 1/8)
@@ -799,7 +799,7 @@ class ImageCAS:
         output = output.clamp(0, 1)
         #output = torch.nan_to_num(output)   # this seems the only way to ensure there are no NaNs
 
-        output = pb(output) 
+        output = pb(output)
 
         return (output,)
 
@@ -867,7 +867,7 @@ class SimpleMath:
 
         return (round(result), result, )
 
-class ModelCompile():  
+class ModelCompile():
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -878,7 +878,7 @@ class ModelCompile():
                 "mode": (["default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"],),
             },
         }
-    
+
     RETURN_TYPES = ("MODEL", )
     FUNCTION = "execute"
     CATEGORY = "essentials"
@@ -944,7 +944,7 @@ class DebugTensorShape:
                 shapes.append(list(tensor.shape))
 
         tensorShape(tensor)
-        
+
         print(f"\033[96mShapes found: {shapes}\033[0m")
 
         return (None,)
@@ -972,7 +972,7 @@ class BatchCount:
             count = len(batch)
 
         return (count, )
-   
+
 class ImageSeamCarving:
     @classmethod
     def INPUT_TYPES(cls):
@@ -1018,14 +1018,14 @@ class ImageSeamCarving:
         for i in range(img.shape[0]):
             resized = seam_carving(
                 T.ToPILImage()(img[i]),
-                size=(width, height), 
+                size=(width, height),
                 energy_mode=energy,
                 order=order,
                 keep_mask=T.ToPILImage()(keep_mask[i]) if keep_mask is not None else None,
                 drop_mask=T.ToPILImage()(drop_mask[i]) if drop_mask is not None else None,
             )
             out.append(T.ToTensor()(resized))
-        
+
         out = torch.stack(out)
         out = pb(out)
 
@@ -1159,7 +1159,7 @@ def expand_mask(mask, expand, tapered_corners):
 
     return torch.stack(out, dim=0)
 
-class KSamplerVariationsWithNoise:       
+class KSamplerVariationsWithNoise:
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {
@@ -1209,12 +1209,12 @@ class KSamplerVariationsWithNoise:
 
         # Calculate sigma
         comfy.model_management.load_model_gpu(model)
-        real_model = model.model
-        sampler = comfy.samplers.KSampler(real_model, steps=steps, device=device, sampler=sampler_name, scheduler=scheduler, denoise=1.0, model_options=model.model_options)
+        model_patcher = comfy.model_patcher.ModelPatcher(model.model, load_device=device, offload_device=comfy.model_management.unet_offload_device())
+        sampler = comfy.samplers.KSampler(model_patcher, steps=steps, device=device, sampler=sampler_name, scheduler=scheduler, denoise=1.0, model_options=model.model_options)
         sigmas = sampler.sigmas
         sigma = sigmas[start_at_step] - sigmas[end_at_step]
         sigma /= model.model.latent_format.scale_factor
-        sigma = sigma.cpu().numpy()
+        sigma = sigma.detach().cpu().item()
 
         work_latent = latent_image.copy()
         work_latent["samples"] = latent_image["samples"].clone() + slerp_noise * sigma
@@ -1230,7 +1230,7 @@ class KSamplerVariationsWithNoise:
 class SDXLEmptyLatentSizePicker:
     def __init__(self):
         self.device = comfy.model_management.intermediate_device()
- 
+
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {
@@ -1273,7 +1273,7 @@ class ImageApplyLUT:
     # TODO: check if we can do without numpy
     def execute(self, image, lut_file, log_colorspace, clip_values, strength):
         from colour.io.luts.iridas_cube import read_LUT_IridasCube
-        
+
         lut = read_LUT_IridasCube(os.path.join(LUTS_DIR, lut_file))
         lut.name = lut_file
 
@@ -1309,7 +1309,7 @@ class ImageApplyLUT:
             if strength < 1.0:
                 lut_img = strength * lut_img + (1 - strength) * img
             out.append(lut_img)
-        
+
         out = torch.stack(out)
 
         return (out, )
@@ -1340,7 +1340,7 @@ class DrawText:
 
     def execute(self, text, font, size, color, background_color, shadow_distance, shadow_blur, shadow_color, alignment, width, height):
         font = ImageFont.truetype(os.path.join(FONTS_DIR, font), size)
-        
+
         lines = text.split("\n")
 
         # Calculate the width and height of the text
@@ -1371,7 +1371,7 @@ class DrawText:
 
             draw = ImageDraw.Draw(image)
             draw.text((x, y), line, font=font, fill=color)
-            
+
             if image_shadow is not None:
                 draw = ImageDraw.Draw(image_shadow)
                 draw.text((x + shadow_distance, y + shadow_distance), line, font=font, fill=shadow_color)
@@ -1527,7 +1527,7 @@ class NoiseFromImage:
 
         # Convert image to grayscale mask
         noise_mask = noise_mask.mean(dim=3).unsqueeze(-1)
-        
+
         # add color noise
         imgs = p(image.clone())
         if color_noise > 0:
