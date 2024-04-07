@@ -526,6 +526,8 @@ class MaskBoundingBox:
         return {
             "required": {
                 "mask": ("MASK",),
+                "padding": ("INT", { "default": 0, "min": 0, "max": 4096, "step": 1, }),
+                "blur": ("INT", { "default": 0, "min": 0, "max": 128, "step": 1, }),
             },
             "optional": {
                 "image_optional": ("IMAGE",),
@@ -537,25 +539,33 @@ class MaskBoundingBox:
     FUNCTION = "execute"
     CATEGORY = "essentials"
 
-    def execute(self, mask, image_optional=None):
+    def execute(self, mask, padding, blur, image_optional=None):
         if image_optional is None:
             image_optional = mask.unsqueeze(3).repeat(1, 1, 1, 3)
 
+        # resize the image if it's not the same size as the mask
         if image_optional.shape[1] != mask.shape[1] or image_optional.shape[2] != mask.shape[2]:
             image_optional = p(image_optional)
             image_optional = comfy.utils.common_upscale(image_optional, mask.shape[2], mask.shape[1], upscale_method='bicubic', crop='center')
             image_optional = pb(image_optional)
         
+        # match batch size
         if image_optional.shape[0] < mask.shape[0]:
             image_optional = torch.cat((image_optional, image_optional[-1].unsqueeze(0).repeat(mask.shape[0]-image_optional.shape[0], 1, 1, 1)), dim=0)
         elif image_optional.shape[0] > mask.shape[0]:
             image_optional = image_optional[:mask.shape[0]]
 
+        # blur the mask
+        if blur > 0:
+            if blur % 2 == 0:
+                blur += 1
+            mask = T.functional.gaussian_blur(mask.unsqueeze(1), blur).squeeze(1)
+        
         _, y, x = torch.where(mask)
-        x1 = x.min().item()
-        x2 = x.max().item() + 1
-        y1 = y.min().item()
-        y2 = y.max().item() + 1
+        x1 = max(0, x.min().item() - padding)
+        x2 = min(mask.shape[2], x.max().item() + 1 + padding)
+        y1 = max(0, y.min().item() - padding)
+        y2 = min(mask.shape[1], y.max().item() + 1 + padding)
 
         # crop the mask
         mask = mask[:, y1:y2, x1:x2]
