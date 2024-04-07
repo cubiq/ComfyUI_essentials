@@ -520,6 +520,49 @@ def cubic_bezier(t, p):
     p0, p1, p2, p3 = p
     return (1 - t)**3 * p0 + 3 * (1 - t)**2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3 * p3
 
+class MaskBoundingBox:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "mask": ("MASK",),
+            },
+            "optional": {
+                "image_optional": ("IMAGE",),
+            }
+        }
+
+    RETURN_TYPES = ("MASK", "IMAGE", "INT", "INT", "INT", "INT")
+    RETURN_NAMES = ("MASK", "IMAGE", "x", "y", "width", "height")
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, mask, image_optional=None):
+        if image_optional is None:
+            image_optional = mask.unsqueeze(3).repeat(1, 1, 1, 3)
+
+        if image_optional.shape[1] != mask.shape[1] or image_optional.shape[2] != mask.shape[2]:
+            image_optional = p(image_optional)
+            image_optional = comfy.utils.common_upscale(image_optional, mask.shape[2], mask.shape[1], upscale_method='bicubic', crop='center')
+            image_optional = pb(image_optional)
+        
+        if image_optional.shape[0] < mask.shape[0]:
+            image_optional = torch.cat((image_optional, image_optional[-1].unsqueeze(0).repeat(mask.shape[0]-image_optional.shape[0], 1, 1, 1)), dim=0)
+        elif image_optional.shape[0] > mask.shape[0]:
+            image_optional = image_optional[:mask.shape[0]]
+
+        _, y, x = torch.where(mask)
+        x1 = x.min().item()
+        x2 = x.max().item() + 1
+        y1 = y.min().item()
+        y2 = y.max().item() + 1
+
+        # crop the mask
+        mask = mask[:, y1:y2, x1:x2]
+        image_optional = image_optional[:, y1:y2, x1:x2, :]
+        
+        return (mask, image_optional, x1, y1, x2 - x1, y2 - y1)
+
 class MaskFromColor:
     @classmethod
     def INPUT_TYPES(s):
@@ -1634,6 +1677,7 @@ NODE_CLASS_MAPPINGS = {
     "TransitionMask+": TransitionMask,
     "MaskFromColor+": MaskFromColor,
     "MaskFromBatch+": MaskFromBatch,
+    "MaskBoundingBox+": MaskBoundingBox,
 
     "SimpleMath+": SimpleMath,
     "ConsoleDebug+": ConsoleDebug,
@@ -1683,6 +1727,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TransitionMask+": "🔧 Transition Mask",
     "MaskFromColor+": "🔧 Mask From Color",
     "MaskFromBatch+": "🔧 Mask From Batch",
+    "MaskBoundingBox+": "🔧 Mask Bounding Box",
 
     "SimpleMath+": "🔧 Simple Math",
     "ConsoleDebug+": "🔧 Console Debug",
