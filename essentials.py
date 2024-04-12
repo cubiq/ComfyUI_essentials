@@ -1262,8 +1262,7 @@ class KSamplerVariationsWithNoise:
 
         # Calculate sigma
         comfy.model_management.load_model_gpu(model)
-        model_patcher = comfy.model_patcher.ModelPatcher(model.model, load_device=device, offload_device=comfy.model_management.unet_offload_device())
-        sampler = comfy.samplers.KSampler(model_patcher, steps=steps, device=device, sampler=sampler_name, scheduler=scheduler, denoise=1.0, model_options=model.model_options)
+        sampler = comfy.samplers.KSampler(model, steps=steps, device=device, sampler=sampler_name, scheduler=scheduler, denoise=1.0, model_options=model.model_options)
         sigmas = sampler.sigmas
         sigma = sigmas[start_at_step] - sigmas[end_at_step]
         sigma /= model.model.latent_format.scale_factor
@@ -1496,7 +1495,7 @@ class PixelOEPixelize:
                 "image": ("IMAGE",),
                 "downscale_mode": (["contrast", "bicubic", "nearest", "center", "k-centroid"],),
                 "target_size": ("INT", { "default": 128, "min": 1, "max": MAX_RESOLUTION, "step": 16 }),
-                "patch_size": ("INT", { "default": 16, "min": 4, "max": 32, "step": 1 }),
+                "patch_size": ("INT", { "default": 16, "min": 4, "max": 32, "step": 2 }),
                 "thickness": ("INT", { "default": 2, "min": 1, "max": 16, "step": 1 }),
                 #"contrast": ("FLOAT", { "default": 1.0, "min": 0.0, "max": 100.0, "step": 0.1 }),
                 #"saturation": ("FLOAT", { "default": 1.0, "min": 0.0, "max": 100.0, "step": 0.1 }),
