@@ -1652,7 +1652,7 @@ class PixelOEPixelize:
     CATEGORY = "essentials"
 
     def execute(self, image, downscale_mode, target_size, patch_size, thickness, color_matching, upscale):
-        from pixeloe import pixelize
+        from pixeloe.pixelize import pixelize
 
         image = image.clone().mul(255).clamp(0, 255).byte().cpu().numpy()
         output = []
