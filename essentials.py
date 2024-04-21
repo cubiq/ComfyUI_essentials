@@ -1801,6 +1801,74 @@ class RemoveLatentMask:
 
         return (s,)
 
+class ConditioningCombineMultiple:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "conditioning_1": ("CONDITIONING",),
+                "conditioning_2": ("CONDITIONING",),
+            }, "optional": {
+                "conditioning_3": ("CONDITIONING",),
+                "conditioning_4": ("CONDITIONING",),
+                "conditioning_5": ("CONDITIONING",),
+            },
+        }
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, conditioning_1, conditioning_2, conditioning_3=None, conditioning_4=None, conditioning_5=None):
+        c = conditioning_1 + conditioning_2
+
+        if conditioning_3 is not None:
+            c += conditioning_3
+        if conditioning_4 is not None:
+            c += conditioning_4
+        if conditioning_5 is not None:
+            c += conditioning_5
+        
+        return (c,)
+
+class ImageBatchMultiple:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image_1": ("IMAGE",),
+                "image_2": ("IMAGE",),
+                "method": (["nearest-exact", "bilinear", "area", "bicubic", "lanczos"], { "default": "lanczos" }),
+            }, "optional": {
+                "image_3": ("IMAGE",),
+                "image_4": ("IMAGE",),
+                "image_5": ("IMAGE",),
+            },
+        }
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image_1, image_2, method, image_3=None, image_4=None, image_5=None):
+        if image_1.shape[1:] != image_2.shape[1:]:
+            image_2 = comfy.utils.common_upscale(image_2.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
+        out = torch.cat((image_1, image_2), dim=0)
+
+        if image_3 is not None:
+            if image_1.shape[1:] != image_3.shape[1:]:
+                image_3 = comfy.utils.common_upscale(image_3.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
+            out = torch.cat((out, image_3), dim=0)
+        if image_4 is not None:
+            if image_1.shape[1:] != image_4.shape[1:]:
+                image_4 = comfy.utils.common_upscale(image_4.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
+            out = torch.cat((out, image_4), dim=0)
+        if image_5 is not None:
+            if image_1.shape[1:] != image_5.shape[1:]:
+                image_5 = comfy.utils.common_upscale(image_5.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
+            out = torch.cat((out, image_5), dim=0)
+        
+        return (out,)
+
+
 NODE_CLASS_MAPPINGS = {
     "GetImageSize+": GetImageSize,
 
@@ -1851,6 +1919,8 @@ NODE_CLASS_MAPPINGS = {
     "ImageRemoveBackground+": ImageRemoveBackground,
 
     "RemoveLatentMask+": RemoveLatentMask,
+    "ConditioningCombineMultiple+": ConditioningCombineMultiple,
+    "ImageBatchMultiple+": ImageBatchMultiple,
 
     #"NoiseFromImage~": NoiseFromImage,
 }
@@ -1904,6 +1974,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageRemoveBackground+": "🔧 Image Remove Background",
 
     "RemoveLatentMask+": "🔧 Remove Latent Mask",
+
+    "ConditioningCombineMultiple+": "🔧 Conditionings Combine Multiple ",
+    "ImageBatchMultiple+": "🔧 Images Batch Multiple",
 
     #"NoiseFromImage~": "🔧 Noise From Image",
 }
