@@ -1297,7 +1297,7 @@ class KSamplerVariationsStochastic:
         work_latent["samples"] = work_latent["samples"][0].unsqueeze(0)
 
         stage1 = common_ksampler(model, noise_seed, steps, cfg, sampler, scheduler, positive, negative, work_latent, denoise=1.0, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)[0]
-        print(stage1)
+
         if batch_size > 1:
             stage1["samples"] = stage1["samples"].clone().repeat(batch_size, 1, 1, 1)
 
