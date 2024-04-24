@@ -419,7 +419,6 @@ class MaskBlur:
         if size % 2 == 0:
             size+= 1
         
-        # remove the channel dimension if it exists
         if mask.dim() == 2:
             mask = mask.unsqueeze(0)
 
@@ -544,6 +543,9 @@ class MaskBoundingBox:
     CATEGORY = "essentials"
 
     def execute(self, mask, padding, blur, image_optional=None):
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(0)
+
         if image_optional is None:
             image_optional = mask.unsqueeze(3).repeat(1, 1, 1, 3)
 
