@@ -418,6 +418,10 @@ class MaskBlur:
         size = int(6 * amount +1)
         if size % 2 == 0:
             size+= 1
+        
+        # remove the channel dimension if it exists
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(0)
 
         blurred = mask.unsqueeze(1)
         blurred = T.GaussianBlur(size, amount)(blurred)
