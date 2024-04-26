@@ -751,7 +751,6 @@ class MaskSmooth:
 
         return (mask,)
 
-
 class MaskFromBatch:
     @classmethod
     def INPUT_TYPES(s):
@@ -773,6 +772,30 @@ class MaskFromBatch:
         start = min(start, mask.shape[0]-1)
         length = min(mask.shape[0]-start, length)
         return (mask[start:start + length], )
+
+class MaskFromList:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "values": ("FLOAT", { "min": 0.0, "max": 1.0, "step": 0.01, }),
+                "width": ("INT", { "default": 32, "min": 1, "max": MAX_RESOLUTION, "step": 8, }),
+                "height": ("INT", { "default": 32, "min": 1, "max": MAX_RESOLUTION, "step": 8, }),
+            }
+        }
+
+    RETURN_TYPES = ("MASK",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, values, width, height):
+        if not isinstance(values, list):
+            values = [values]
+
+        values = torch.tensor(values).float()
+        values = (values - values.min()) / values.max()
+
+        return (values.unsqueeze(1).unsqueeze(2).repeat(1, width, height), )
 
 class ImageFromBatch:
     @classmethod
@@ -1907,6 +1930,7 @@ NODE_CLASS_MAPPINGS = {
     "MaskFromSegmentation+": MaskFromSegmentation,
     "MaskFromRGBCMYBW+": MaskFromRGBCMYBW,
     "MaskSmooth+": MaskSmooth,
+    "MaskFromList+": MaskFromList,
 
     "SimpleMath+": SimpleMath,
     "ConsoleDebug+": ConsoleDebug,
@@ -1962,6 +1986,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MaskFromSegmentation+": "🔧 Mask From Segmentation",
     "MaskFromRGBCMYBW+": "🔧 Mask From RGB/CMY/BW",
     "MaskSmooth+": "🔧 Mask Smooth",
+    "MaskFromList+": "🔧 Mask From List",
 
     "SimpleMath+": "🔧 Simple Math",
     "ConsoleDebug+": "🔧 Console Debug",
