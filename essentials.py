@@ -1266,7 +1266,7 @@ class CLIPTextEncodeSDXLSimplified:
             "width": ("INT", {"default": 1024.0, "min": 0, "max": MAX_RESOLUTION}),
             "height": ("INT", {"default": 1024.0, "min": 0, "max": MAX_RESOLUTION}),
             "size_cond_factor": ("INT", {"default": 4, "min": 1, "max": 16 }),
-            "text": ("STRING", {"multiline": True, "default": ""}),
+            "text": ("STRING", {"multiline": True, "dynamicPrompts": True, "default": ""}),
             "clip": ("CLIP", ),
             }}
     RETURN_TYPES = ("CONDITIONING",)
@@ -1547,7 +1547,7 @@ class DrawText:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "text": ("STRING", { "multiline": True, "default": "Hello, World!" }),
+                "text": ("STRING", { "multiline": True, "dynamicPrompts": True, "default": "Hello, World!" }),
                 "font": ([f for f in os.listdir(FONTS_DIR) if f.endswith('.ttf') or f.endswith('.otf')], ),
                 "size": ("INT", { "default": 56, "min": 1, "max": 9999, "step": 1 }),
                 "color": ("STRING", { "multiline": False, "default": "#FFFFFF" }),
