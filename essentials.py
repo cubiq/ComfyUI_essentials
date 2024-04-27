@@ -12,7 +12,10 @@ import io
 
 import torch
 import torch.nn.functional as F
-import torchvision.transforms.v2 as T
+try:
+    import torchvision.transforms.v2 as T
+except ImportError:
+    import torchvision.transforms as T
 
 from nodes import MAX_RESOLUTION, SaveImage, common_ksampler
 import folder_paths
