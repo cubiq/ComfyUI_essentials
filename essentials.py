@@ -793,7 +793,8 @@ class MaskFromList:
             values = [values]
 
         values = torch.tensor(values).float()
-        values = (values - values.min()) / values.max()
+        values = torch.clamp(values, 0.0, 1.0)
+        #values = (values - values.min()) / values.max()
 
         return (values.unsqueeze(1).unsqueeze(2).repeat(1, width, height), )
 
