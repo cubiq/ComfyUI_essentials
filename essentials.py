@@ -1043,7 +1043,8 @@ operators = {
 
 op_functions = {
     'min': min,
-    'max': max
+    'max': max,
+    'round': round,
 }
 
 class SimpleMath:
@@ -1083,6 +1084,12 @@ class SimpleMath:
                 if node.func.id in op_functions:
                     args =[eval_(arg) for arg in node.args]
                     return op_functions[node.func.id](*args)
+            elif isinstance(node, ast.Subscript): # indexing or slicing
+                value = eval_(node.value)
+                if isinstance(node.slice, ast.Constant):
+                    return value[node.slice.value]
+                else:
+                    return 0
             else:
                 return 0
 
@@ -1897,7 +1904,6 @@ class ImageBatchMultiple:
             out = torch.cat((out, image_5), dim=0)
         
         return (out,)
-
 
 NODE_CLASS_MAPPINGS = {
     "GetImageSize+": GetImageSize,
