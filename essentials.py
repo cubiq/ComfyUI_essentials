@@ -415,6 +415,7 @@ class MaskBlur:
     CATEGORY = "essentials"
 
     def execute(self, mask, amount):
+        mask = mask.to(comfy.model_management.get_torch_device())
         size = int(6 * amount + 1)
         if size % 2 == 0:
             size+= 1
@@ -425,6 +426,7 @@ class MaskBlur:
         blurred = mask.unsqueeze(1)
         blurred = T.GaussianBlur(size, amount)(blurred)
         blurred = blurred.squeeze(1)
+        blurred = blurred.to(comfy.model_management.intermediate_device())
 
         return(blurred,)
 
