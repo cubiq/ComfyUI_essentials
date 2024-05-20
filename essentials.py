@@ -112,6 +112,52 @@ class ImageResize:
         outputs = pb(outputs)
 
         return(outputs, outputs.shape[2], outputs.shape[1],)
+class ImageResizeMygo:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "width": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
+                "height": ("INT", { "default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
+                "interpolation": (["nearest", "bilinear", "bicubic", "area", "nearest-exact", "lanczos"],),
+                "keep_proportion": ("BOOLEAN", { "default": True }),
+                "circumscribe": ("BOOLEAN", { "default": True }),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE", "INT", "INT",)
+    RETURN_NAMES = ("IMAGE", "width", "height",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image, width, height, keep_proportion, interpolation="nearest", circumscribe = True):
+        if keep_proportion is True:
+            _, oh, ow, _ = image.shape #batchsize, height, weight, channels
+            # print(image.shape)
+            width = ow if width == 0 else width
+            height = oh if height == 0 else height
+            if not circumscribe:
+                ratio = min(width / ow, height / oh)
+            else :
+                oriratio = ow/oh
+                newratio = width/height
+                ratio = height / oh if oriratio > newratio else width / ow
+                # if oriratio>newratio:
+                #     ratio = height/oh
+                # else:
+                #     ratio = width/ow
+            width = round(ow*ratio)
+            height = round(oh*ratio)
+        
+        outputs = p(image)
+        if interpolation == "lanczos":
+            outputs = comfy.utils.lanczos(outputs, width, height)
+        else:
+            outputs = F.interpolate(outputs, size=(height, width), mode=interpolation)
+        outputs = pb(outputs)
+
+        return(outputs, outputs.shape[2], outputs.shape[1],)
 
 class ImageFlip:
     @classmethod
@@ -1986,6 +2032,7 @@ NODE_CLASS_MAPPINGS = {
     "GetImageSize+": GetImageSize,
 
     "ImageResize+": ImageResize,
+    "ImageResize++": ImageResizeMygo,
     "ImageCrop+": ImageCrop,
     "ImageFlip+": ImageFlip,
 
@@ -2045,6 +2092,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "GetImageSize+": "🔧 Get Image Size",
     "ImageResize+": "🔧 Image Resize",
+    "ImageResize++": "🔧 Image Resize Mygo",
     "ImageCrop+": "🔧 Image Crop",
     "ImageFlip+": "🔧 Image Flip",
 
