@@ -1683,8 +1683,15 @@ class RemBGSession:
 
     def execute(self, model, providers):
         from rembg import new_session as rembg_new_session
+        rembg_model_dir =  os.path.join(folder_paths.models_dir, "rembg")
+        select_model = model.split(":")[0]
 
-        model = model.split(":")[0]
+        for model in os.listdir(rembg_model_dir):
+            if model == select_model:
+                model = os.path.join(rembg_model_dir, model)
+            else:
+                model = select_model
+
         return (rembg_new_session(model, providers=[providers+"ExecutionProvider"]),)
 
 class ImageRemoveBackground:
