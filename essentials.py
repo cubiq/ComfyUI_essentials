@@ -376,6 +376,52 @@ class ExtractKeyframes:
 
         return (image[keyframes], ','.join(map(str, keyframes)),)
 
+class ImageRandomTransform:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "repeat": ("INT", { "default": 1, "min": 1, "max": 16, "step": 1, }),
+                "variation": ("FLOAT", { "default": 0.1, "min": 0.0, "max": 1.0, "step": 0.05, }),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials"
+
+    def execute(self, image, seed, repeat, variation):
+        h, w = image.shape[1:3]
+        image = p(image.repeat(repeat, 1, 1, 1))
+
+        distortion = 0.2 * variation
+        rotation = 5 * variation
+        brightness = 0.5 * variation
+        contrast = 0.5 * variation
+        saturation = 0.5 * variation
+        hue = 0.15 * variation
+        scale = 0.5 * variation
+
+        # set pytorch seed
+        torch.manual_seed(seed)
+
+        out = []
+        for i in image:
+            tramsforms = T.Compose([
+                T.RandomPerspective(distortion_scale=distortion, p=0.5),
+                T.RandomRotation(degrees=rotation, interpolation=T.InterpolationMode.BILINEAR, expand=True),
+                T.ColorJitter(brightness=brightness, contrast=contrast, saturation=saturation, hue=hue),
+                T.RandomHorizontalFlip(p=0.5),
+                T.RandomResizedCrop((h, w), scale=(1-scale, 1+scale), ratio=(w/h, w/h), interpolation=T.InterpolationMode.BICUBIC),
+            ])
+            out.append(tramsforms(i.unsqueeze(0)))
+        
+        out = pb(torch.cat(out, dim=0))
+
+        return (out,)
+
 class MaskFlip:
     @classmethod
     def INPUT_TYPES(s):
@@ -798,7 +844,7 @@ class MaskFromList:
         values = torch.clamp(values, 0.0, 1.0)
         #values = (values - values.min()) / values.max()
 
-        return (values.unsqueeze(1).unsqueeze(2).repeat(1, width, height), )
+        return (values.unsqueeze(1).unsqueeze(2).repeat(1, height, width), )
 
 class ImageFromBatch:
     @classmethod
@@ -1047,6 +1093,8 @@ op_functions = {
     'min': min,
     'max': max,
     'round': round,
+    'sum': sum,
+    'len': len,
 }
 
 class SimpleMath:
@@ -1099,7 +1147,7 @@ class SimpleMath:
 
         if math.isnan(result):
             result = 0.0
-
+        
         return (round(result), result, )
 
 class ModelCompile():
@@ -2001,6 +2049,7 @@ NODE_CLASS_MAPPINGS = {
     "ExtractKeyframes+": ExtractKeyframes,
     "ImageApplyLUT+": ImageApplyLUT,
     "PixelOEPixelize+": PixelOEPixelize,
+    "ImageRandomTransform+": ImageRandomTransform,
 
     "MaskBlur+": MaskBlur,
     "MaskFlip+": MaskFlip,
@@ -2060,6 +2109,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ExtractKeyframes+": "🔧 Extract Keyframes (experimental)",
     "ImageApplyLUT+": "🔧 Image Apply LUT",
     "PixelOEPixelize+": "🔧 Pixelize",
+    "ImageRandomTransform+": "🔧 Image Random Transform",
 
     "MaskBlur+": "🔧 Mask Blur",
     "MaskFlip+": "🔧 Mask Flip",
