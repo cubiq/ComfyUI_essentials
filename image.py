@@ -734,8 +734,8 @@ class ImageApplyLUT:
             "required": {
                 "image": ("IMAGE",),
                 "lut_file": ([f for f in os.listdir(LUTS_DIR) if f.lower().endswith('.cube')], ),
-                "log_colorspace": ("BOOLEAN", { "default": False }),
-                "clip_values": ("BOOLEAN", { "default": False }),
+                "gamma_correction": ("BOOLEAN", { "default": True }),
+                "clip_values": ("BOOLEAN", { "default": True }),
                 "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.1 }),
             }}
 
@@ -744,7 +744,7 @@ class ImageApplyLUT:
     CATEGORY = "essentials/image processing"
 
     # TODO: check if we can do without numpy
-    def execute(self, image, lut_file, log_colorspace, clip_values, strength):
+    def execute(self, image, lut_file, gamma_correction, clip_values, strength):
         from colour.io.luts.iridas_cube import read_LUT_IridasCube
 
         device = image.device
@@ -771,10 +771,10 @@ class ImageApplyLUT:
             if is_non_default_domain:
                 dom_scale = lut.domain[1] - lut.domain[0]
                 lut_img = lut_img * dom_scale + lut.domain[0]
-            if log_colorspace:
+            if gamma_correction:
                 lut_img = lut_img ** (1/2.2)
             lut_img = lut.apply(lut_img)
-            if log_colorspace:
+            if gamma_correction:
                 lut_img = lut_img ** (2.2)
             if is_non_default_domain:
                 lut_img = (lut_img - lut.domain[0]) / dom_scale
