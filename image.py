@@ -733,7 +733,7 @@ class ImageApplyLUT:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "lut_file": ([f for f in os.listdir(LUTS_DIR) if f.endswith('.cube')], ),
+                "lut_file": ([f for f in os.listdir(LUTS_DIR) if f.lower().endswith('.cube')], ),
                 "log_colorspace": ("BOOLEAN", { "default": False }),
                 "clip_values": ("BOOLEAN", { "default": False }),
                 "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.1 }),

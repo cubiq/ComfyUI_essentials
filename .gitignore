@@ -1,4 +1,5 @@
 /__pycache__/
 /luts/*.cube
+/luts/*.CUBE
 /fonts/*.ttf
 /fonts/*.otf
