@@ -70,5 +70,5 @@ COND_CLASS_MAPPINGS = {
 
 COND_NAME_MAPPINGS = {
     "CLIPTextEncodeSDXL+": "🔧 SDXL CLIPTextEncode",
-    "ConditioningCombineMultiple+": "🔧 Conditionings Combine Multiple",
+    "ConditioningCombineMultiple+": "🔧 Cond Combine Multiple",
 }
