@@ -954,7 +954,7 @@ IMAGE_CLASS_MAPPINGS = {
     # Image batch
     "ImageBatchMultiple+": ImageBatchMultiple,
     "ImageExpandBatch+": ImageExpandBatch,
-    #"ImageFromBatch+": ImageFromBatch,
+    "ImageFromBatch+": ImageFromBatch,
     "ImageListToBatch+": ImageListToBatch,
 
     # Image manipulation
@@ -990,7 +990,7 @@ IMAGE_NAME_MAPPINGS = {
     # Image batch
     "ImageBatchMultiple+": "🔧 Images Batch Multiple",
     "ImageExpandBatch+": "🔧 Image Expand Batch",
-    #"ImageFromBatch+": "🔧 Image From Batch",
+    "ImageFromBatch+": "🔧 Image From Batch",
     "ImageListToBatch+": "🔧 Image List To Batch",
 
     # Image manipulation
