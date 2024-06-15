@@ -1,4 +1,4 @@
-from nodes import MAX_RESOLUTION
+from nodes import MAX_RESOLUTION, ConditioningZeroOut, ConditioningSetTimestepRange, ConditioningCombine
 
 class CLIPTextEncodeSDXLSimplified:
     @classmethod
@@ -63,12 +63,37 @@ class ConditioningCombineMultiple:
         
         return (c,)
 
+class SD3NegativeConditioning:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "conditioning": ("CONDITIONING",),
+            "end": ("FLOAT", {"default": 0.1, "min": 0.0, "max": 1.0, "step": 0.001 }),
+        }}
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/conditioning"
+
+    def execute(self, conditioning, end):      
+        zero_c = ConditioningZeroOut().zero_out(conditioning)[0]
+
+        if end == 0:
+            return (zero_c, )
+
+        c = ConditioningSetTimestepRange().set_range(conditioning, 0, end)[0]
+        zero_c = ConditioningSetTimestepRange().set_range(zero_c, end, 1.0)[0]      
+        c = ConditioningCombine().combine(zero_c, c)[0]
+
+        return (c, )
+
 COND_CLASS_MAPPINGS = {
     "CLIPTextEncodeSDXL+": CLIPTextEncodeSDXLSimplified,
     "ConditioningCombineMultiple+": ConditioningCombineMultiple,
+    "SD3NegativeConditioning+": SD3NegativeConditioning,
 }
 
 COND_NAME_MAPPINGS = {
     "CLIPTextEncodeSDXL+": "🔧 SDXL CLIPTextEncode",
     "ConditioningCombineMultiple+": "🔧 Cond Combine Multiple",
+    "SD3NegativeConditioning+": "🔧 SD3 Negative Conditioning"
 }
