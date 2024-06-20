@@ -1,3 +1,4 @@
+import torch
 from nodes import MAX_RESOLUTION, ConditioningZeroOut, ConditioningSetTimestepRange, ConditioningCombine
 
 class CLIPTextEncodeSDXLSimplified:
@@ -60,7 +61,7 @@ class ConditioningCombineMultiple:
             c += conditioning_4
         if conditioning_5 is not None:
             c += conditioning_5
-        
+
         return (c,)
 
 class SD3NegativeConditioning:
@@ -74,14 +75,14 @@ class SD3NegativeConditioning:
     FUNCTION = "execute"
     CATEGORY = "essentials/conditioning"
 
-    def execute(self, conditioning, end):      
+    def execute(self, conditioning, end):
         zero_c = ConditioningZeroOut().zero_out(conditioning)[0]
 
         if end == 0:
             return (zero_c, )
 
         c = ConditioningSetTimestepRange().set_range(conditioning, 0, end)[0]
-        zero_c = ConditioningSetTimestepRange().set_range(zero_c, end, 1.0)[0]      
+        zero_c = ConditioningSetTimestepRange().set_range(zero_c, end, 1.0)[0]
         c = ConditioningCombine().combine(zero_c, c)[0]
 
         return (c, )
