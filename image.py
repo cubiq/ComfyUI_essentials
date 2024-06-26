@@ -68,27 +68,27 @@ class ImageBatchMultiple:
     CATEGORY = "essentials/image batch"
 
     def execute(self, image_1, method, image_2=None, image_3=None, image_4=None, image_5=None):
-        images = [image_1]
+        if all(img is None for img in (image_2, image_3, image_4, image_5)):
+            return (image_1,)
 
         if image_2 is not None:
             if image_1.shape[1:] != image_2.shape[1:]:
                 image_2 = comfy.utils.common_upscale(image_2.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
-            images.append(image_2)
+            out = torch.cat((image_1, image_2), dim=0)
         if image_3 is not None:
             if image_1.shape[1:] != image_3.shape[1:]:
                 image_3 = comfy.utils.common_upscale(image_3.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
-            images.append(image_3)
+            out = torch.cat((out, image_3), dim=0)
         if image_4 is not None:
             if image_1.shape[1:] != image_4.shape[1:]:
                 image_4 = comfy.utils.common_upscale(image_4.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
-            images.append(image_4)
+            out = torch.cat((out, image_4), dim=0)
         if image_5 is not None:
             if image_1.shape[1:] != image_5.shape[1:]:
                 image_5 = comfy.utils.common_upscale(image_5.movedim(-1,1), image_1.shape[2], image_1.shape[1], method, "center").movedim(1,-1)
-            images.append(image_5)
+            out = torch.cat((out, image_5), dim=0)
 
-        out = torch.cat(images, dim=0)
-        return (out, )
+        return (out,)
 
 
 class ImageExpandBatch:
