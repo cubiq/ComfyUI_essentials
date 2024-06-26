@@ -1,6 +1,6 @@
 [project]
 name = "comfyui_essentials"
-description = "Essential nodes that are weirdly missing from ComfyUI core. With few exceptions they are new features and not commodities. I hope this will be just a temporary repository until the nodes get included into ComfyUI."
+description = "Essential nodes that are weirdly missing from ComfyUI core. With few exceptions they are new features and not commodities."
 version = "1.0.0"
 license = "LICENSE"
 dependencies = ["numba", "colour-science", "rembg", "pixeloe"]
@@ -10,6 +10,6 @@ Repository = "https://github.com/cubiq/ComfyUI_essentials"
 #  Used by Comfy Registry https://comfyregistry.org
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "matteo"
 DisplayName = "ComfyUI_essentials"
 Icon = ""
