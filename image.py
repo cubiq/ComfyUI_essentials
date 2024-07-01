@@ -1,6 +1,9 @@
 from .utils import max_, min_
 from nodes import MAX_RESOLUTION
 import comfy.utils
+from nodes import SaveImage
+from node_helpers import pillow
+from PIL import Image, ImageOps
 
 import torch
 import torch.nn.functional as F
@@ -11,6 +14,8 @@ warnings.filterwarnings('ignore', module="torchvision")
 import math
 import os
 import numpy as np
+import folder_paths
+import random
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -343,6 +348,8 @@ class ImageResize:
             x2 = width - ((width % multiple_of) - x)
             y2 = height - ((height % multiple_of) - y)
             outputs = outputs[:, y:y2, x:x2, :]
+        
+        outputs = torch.clamp(outputs, 0, 1)
 
         return(outputs, outputs.shape[2], outputs.shape[1],)
 
@@ -1057,7 +1064,7 @@ class ImageRemoveAlpha:
         return {
             "required": {
                 "image": ("IMAGE",),
-            }
+            },
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -1068,6 +1075,68 @@ class ImageRemoveAlpha:
         if image.shape[3] == 4:
             image = image[..., :3]
         return (image,)
+
+class ImagePreviewFromLatent(SaveImage):
+    def __init__(self):
+        self.output_dir = folder_paths.get_temp_directory()
+        self.type = "temp"
+        self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
+        self.compress_level = 1
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "latent": ("LATENT",),
+                "vae": ("VAE", ),
+                "tile_size": ("INT", {"default": 0, "min": 0, "max": 4096, "step": 64})
+            }, "optional": {
+                "image": (["none"], {"image_upload": False}),
+            }, "hidden": {
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT",)
+    RETURN_NAMES = ("IMAGE", "MASK", "width", "height",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/image utils"
+
+    def execute(self, latent, vae, tile_size, prompt=None, extra_pnginfo=None, image=None, filename_prefix="ComfyUI"):
+        mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
+        ui = None
+
+        if image.startswith("clipspace"):
+            image_path = folder_paths.get_annotated_filepath(image)
+            if not os.path.exists(image_path):
+                raise ValueError(f"Clipspace image does not exist anymore, select 'none' in the image field.")
+
+            img = pillow(Image.open, image_path)
+            img = pillow(ImageOps.exif_transpose, img)
+            if img.mode == "I":
+                img = img.point(lambda i: i * (1 / 255))
+            image = img.convert("RGB")
+            image = np.array(image).astype(np.float32) / 255.0
+            image = torch.from_numpy(image)[None,]
+            if "A" in img.getbands():
+                mask = np.array(img.getchannel('A')).astype(np.float32) / 255.0
+                mask = 1. - torch.from_numpy(mask)
+            ui = {
+                "filename": os.path.basename(image_path),
+                "subfolder": os.path.dirname(image_path),
+                "type": "temp",
+            }
+        else:
+            if tile_size > 0:
+                tile_size = max(tile_size, 320)
+                image = vae.decode_tiled(latent["samples"], tile_x=tile_size // 8, tile_y=tile_size // 8, )
+            else:
+                image = vae.decode(latent["samples"])
+            ui = self.save_images(image, filename_prefix, prompt, extra_pnginfo)
+
+        out = {**ui, "result": (image, mask, image.shape[2], image.shape[1],)}
+        return out
 
 IMAGE_CLASS_MAPPINGS = {
     # Image analysis
@@ -1103,6 +1172,7 @@ IMAGE_CLASS_MAPPINGS = {
     # Utilities
     "GetImageSize+": GetImageSize,
     "ImageToDevice+": ImageToDevice,
+    "ImagePreviewFromLatent+": ImagePreviewFromLatent,
 
     #"ExtractKeyframes+": ExtractKeyframes,
 }
@@ -1141,4 +1211,5 @@ IMAGE_NAME_MAPPINGS = {
     # Utilities
     "GetImageSize+": "🔧 Get Image Size",
     "ImageToDevice+": "🔧 Image To Device",
+    "ImagePreviewFromLatent+": "🔧 Image Preview From Latent",
 }
