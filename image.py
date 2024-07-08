@@ -547,11 +547,9 @@ class ImageUntile:
                 # feather the overlap on top
                 if i > 0:
                     mask[:, :overlap_y, :] *= torch.linspace(0, 1, overlap_y, device=tiles.device, dtype=tiles.dtype).unsqueeze(1)
-                
                 # feather the overlap on bottom
                 #if i < rows - 1:
                 #    mask[:, -overlap_y:, :] *= torch.linspace(1, 0, overlap_y, device=tiles.device, dtype=tiles.dtype).unsqueeze(1)
-
                 # feather the overlap on left
                 if j > 0:
                     mask[:, :, :overlap_x] *= torch.linspace(0, 1, overlap_x, device=tiles.device, dtype=tiles.dtype).unsqueeze(0)
@@ -560,13 +558,8 @@ class ImageUntile:
                 #    mask[:, :, -overlap_x:] *= torch.linspace(1, 0, overlap_x, device=tiles.device, dtype=tiles.dtype).unsqueeze(0)
                 
                 mask = mask.unsqueeze(-1).repeat(1, 1, 1, tiles.shape[3])
-
                 tile = tiles[i * cols + j] * mask
-
-                # apply the mask to the tile
                 out[:, y1:y2, x1:x2, :] = out[:, y1:y2, x1:x2, :] * (1 - mask) + tile
-
-                #out[:, y1:y2, x1:x2, :] = tiles[i * cols + j]
         return(out, )
 
 class ImageSeamCarving:
