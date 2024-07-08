@@ -213,7 +213,7 @@ class SDXLEmptyLatentSizePicker:
     FUNCTION = "execute"
     CATEGORY = "essentials/utilities"
 
-    def execute(self, resolution, batch_size, width_override, height_override):
+    def execute(self, resolution, batch_size, width_override=0, height_override=0):
         width, height = resolution.split(" ")[0].split("x")
         width = width_override if width_override > 0 else int(width)
         height = height_override if height_override > 0 else int(height)
