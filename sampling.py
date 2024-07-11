@@ -147,13 +147,34 @@ class KSamplerVariationsStochastic:
 
         return common_ksampler(model, variation_seed, steps, cfg, variation_sampler, scheduler, positive, negative, stage1, denoise=1.0, disable_noise=disable_noise, start_step=start_at_step, last_step=end_at_step, force_full_denoise=force_full_denoise)
 
+class InjectLatentNoise:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+                    "latent": ("LATENT", ),
+                    "noise_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                    "noise_strength": ("FLOAT", {"default": 1.0, "min": -20.0, "max": 20.0, "step":0.01, "round": 0.01}),
+                }}
+
+    RETURN_TYPES = ("LATENT",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/sampling"
+
+    def execute(self, latent, noise_seed, noise_strength):
+        torch.manual_seed(noise_seed)
+        noise_latent = latent.copy()
+        noise_latent["samples"] = noise_latent["samples"].clone() + torch.randn_like(noise_latent["samples"]) * noise_strength
+
+        return (noise_latent, )
 
 SAMPLING_CLASS_MAPPINGS = {
     "KSamplerVariationsStochastic+": KSamplerVariationsStochastic,
     "KSamplerVariationsWithNoise+": KSamplerVariationsWithNoise,
+    "InjectLatentNoise+": InjectLatentNoise,
 }
 
 SAMPLING_NAME_MAPPINGS = {
     "KSamplerVariationsStochastic+": "🔧 KSampler Stochastic Variations",
     "KSamplerVariationsWithNoise+": "🔧 KSampler Variations with Noise Injection",
+    "InjectLatentNoise+": "🔧 Inject Latent Noise"
 }
