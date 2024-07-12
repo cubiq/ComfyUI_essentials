@@ -278,7 +278,7 @@ class ImageResize:
             if height == 0 and ow < width:
                 height = MAX_RESOLUTION
             elif height == 0 and ow >= width:
-                height = ow
+                height = oh
 
             ratio = min(width / ow, height / oh)
             new_width = round(ow*ratio)
