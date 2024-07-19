@@ -761,10 +761,42 @@ class RemBGSession:
     CATEGORY = "essentials/image manipulation"
 
     def execute(self, model, providers):
-        from rembg import new_session
+        from rembg import new_session, remove
 
         model = model.split(":")[0]
-        return (new_session(model, providers=[providers+"ExecutionProvider"]),)
+
+        class Session:
+            def __init__(self, model, providers):
+                self.session = new_session(model, providers=[providers+"ExecutionProvider"])
+            def process(self, image):
+                return remove(image, session=self.session)
+            
+        return (Session(model, providers),)
+
+class TransparentBGSession:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "mode": (["base", "fast", "base-nightly"],),
+                "use_jit": ("BOOLEAN", { "default": True }),
+            },
+        }
+
+    RETURN_TYPES = ("REMBG_SESSION",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/image manipulation"
+
+    def execute(self, mode, use_jit):
+        from transparent_background import Remover
+
+        class Session:
+            def __init__(self, mode, use_jit):
+                self.session = Remover(mode=mode, jit=use_jit)
+            def process(self, image):
+                return self.session.process(image)
+
+        return (Session(mode, use_jit),)
 
 class ImageRemoveBackground:
     @classmethod
@@ -781,13 +813,11 @@ class ImageRemoveBackground:
     CATEGORY = "essentials/image manipulation"
 
     def execute(self, rembg_session, image):
-        from rembg import remove as rembg
-
         image = image.permute([0, 3, 1, 2])
         output = []
         for img in image:
             img = T.ToPILImage()(img)
-            img = rembg(img, session=rembg_session)
+            img = rembg_session.process(img)
             output.append(T.ToTensor()(img))
 
         output = torch.stack(output, dim=0)
@@ -1426,6 +1456,7 @@ IMAGE_CLASS_MAPPINGS = {
     "ImageTile+": ImageTile,
     "ImageUntile+": ImageUntile,
     "RemBGSession+": RemBGSession,
+    "TransparentBGSession+": TransparentBGSession,
 
     # Image processing
     "ImageApplyLUT+": ImageApplyLUT,
@@ -1468,6 +1499,7 @@ IMAGE_NAME_MAPPINGS = {
     "ImageTile+": "🔧 Image Tile",
     "ImageUntile+": "🔧 Image Untile",
     "RemBGSession+": "🔧 RemBG Session",
+    "TransparentBGSession+": "🔧 InSPyReNet TransparentBG",
 
     # Image processing
     "ImageApplyLUT+": "🔧 Image Apply LUT",
