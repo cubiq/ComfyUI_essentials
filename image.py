@@ -1089,6 +1089,7 @@ class ImageColorMatch:
                 "color_space": (["LAB", "YCbCr", "RGB", "LUV", "YUV", "XYZ"],),
                 "factor": ("FLOAT", { "default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, }),
                 "device": (["auto", "cpu", "gpu"],),
+                "batch_size": ("INT", { "default": 0, "min": 0, "max": 1024, "step": 1, }),
             }
         }
 
@@ -1096,7 +1097,7 @@ class ImageColorMatch:
     FUNCTION = "execute"
     CATEGORY = "essentials/image processing"
 
-    def execute(self, image, reference, color_space, factor, device):
+    def execute(self, image, reference, color_space, factor, device, batch_size):
         import kornia
 
         if "gpu" == device:
@@ -1106,44 +1107,64 @@ class ImageColorMatch:
         else:
             device = 'cpu'
 
-        image = image.permute([0, 3, 1, 2]).to(device)
+        image = image.permute([0, 3, 1, 2])
         reference = reference.permute([0, 3, 1, 2]).to(device)
 
+        if batch_size == 0 or batch_size > image.shape[0]:
+            batch_size = image.shape[0]
+
         if "LAB" == color_space:
-            image = kornia.color.rgb_to_lab(image)
             reference = kornia.color.rgb_to_lab(reference)
         elif "YCbCr" == color_space:
-            image = kornia.color.rgb_to_ycbcr(image)
             reference = kornia.color.rgb_to_ycbcr(reference)
         elif "LUV" == color_space:
-            image = kornia.color.rgb_to_luv(image)
             reference = kornia.color.rgb_to_luv(reference)
         elif "YUV" == color_space:
-            image = kornia.color.rgb_to_yuv(image)
             reference = kornia.color.rgb_to_yuv(reference)
         elif "XYZ" == color_space:
-            image = kornia.color.rgb_to_xyz(image)
             reference = kornia.color.rgb_to_xyz(reference)
 
-        image_mean, image_std = self.compute_mean_std(image)
         reference_mean, reference_std = self.compute_mean_std(reference)
-        out = ((image - image_mean) / (image_std + 1e-6)) * (reference_std + 1e-6) + reference_mean
-        out = factor * out + (1 - factor) * image
 
-        if "LAB" == color_space:
-            out = kornia.color.lab_to_rgb(out)
-        elif "YCbCr" == color_space:
-            out = kornia.color.ycbcr_to_rgb(out)
-        elif "LUV" == color_space:
-            out = kornia.color.luv_to_rgb(out)
-        elif "YUV" == color_space:
-            out = kornia.color.yuv_to_rgb(out)
-        elif "XYZ" == color_space:
-            out = kornia.color.xyz_to_rgb(out)
+        image_batch = torch.split(image, batch_size, dim=0)
+        output = []
 
-        out = out.permute([0, 2, 3, 1]).clamp(0, 1).to(comfy.model_management.intermediate_device())
+        for image in image_batch:
+            image = image.to(device)
 
-        return (out,)
+            if "LAB" == color_space:
+                image = kornia.color.rgb_to_lab(image)
+            elif "YCbCr" == color_space:
+                image = kornia.color.rgb_to_ycbcr(image)
+            elif "LUV" == color_space:
+                image = kornia.color.rgb_to_luv(image)
+            elif "YUV" == color_space:
+                image = kornia.color.rgb_to_yuv(image)
+            elif "XYZ" == color_space:
+                image = kornia.color.rgb_to_xyz(image)
+
+            image_mean, image_std = self.compute_mean_std(image)
+            out = ((image - image_mean) / (image_std + 1e-6)) * (reference_std + 1e-6) + reference_mean
+            out = factor * out + (1 - factor) * image
+
+            if "LAB" == color_space:
+                out = kornia.color.lab_to_rgb(out)
+            elif "YCbCr" == color_space:
+                out = kornia.color.ycbcr_to_rgb(out)
+            elif "LUV" == color_space:
+                out = kornia.color.luv_to_rgb(out)
+            elif "YUV" == color_space:
+                out = kornia.color.yuv_to_rgb(out)
+            elif "XYZ" == color_space:
+                out = kornia.color.xyz_to_rgb(out)
+
+            out = out.permute([0, 2, 3, 1]).clamp(0, 1).to(comfy.model_management.intermediate_device())
+            output.append(out)
+        
+        out = None
+        output = torch.cat(output, dim=0)
+
+        return (output,)
 
     def compute_mean_std(self, image):
         mean = torch.mean(image, dim=(2, 3), keepdim=True)
