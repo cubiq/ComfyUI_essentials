@@ -934,7 +934,7 @@ class ImageApplyLUT:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "lut_file": ([f for f in os.listdir(LUTS_DIR) if f.lower().endswith('.cube')], ),
+                "lut_file": (sorted([f for f in os.listdir(LUTS_DIR) if f.lower().endswith('.cube')]), ),
                 "gamma_correction": ("BOOLEAN", { "default": True }),
                 "clip_values": ("BOOLEAN", { "default": True }),
                 "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.1 }),

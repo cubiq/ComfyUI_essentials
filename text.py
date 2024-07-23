@@ -10,7 +10,7 @@ class DrawText:
         return {
             "required": {
                 "text": ("STRING", { "multiline": True, "dynamicPrompts": True, "default": "Hello, World!" }),
-                "font": ([f for f in os.listdir(FONTS_DIR) if f.endswith('.ttf') or f.endswith('.otf')], ),
+                "font": (sorted([f for f in os.listdir(FONTS_DIR) if f.endswith('.ttf') or f.endswith('.otf')]), ),
                 "size": ("INT", { "default": 56, "min": 1, "max": 9999, "step": 1 }),
                 "color": ("STRING", { "multiline": False, "default": "#FFFFFF" }),
                 "background_color": ("STRING", { "multiline": False, "default": "#00000000" }),
