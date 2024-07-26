@@ -1523,7 +1523,7 @@ IMAGE_CLASS_MAPPINGS = {
     "ImageToDevice+": ImageToDevice,
     "ImagePreviewFromLatent+": ImagePreviewFromLatent,
     "NoiseFromImage+": NoiseFromImage,
-
+    "StringToLuts+": StringToLuts,
     #"ExtractKeyframes+": ExtractKeyframes,
 }
 
@@ -1566,4 +1566,5 @@ IMAGE_NAME_MAPPINGS = {
     "ImageToDevice+": "🔧 Image To Device",
     "ImagePreviewFromLatent+": "🔧 Image Preview From Latent",
     "NoiseFromImage+": "🔧 Noise From Image",
+    "StringToLuts+": "🔧 String To Luts",
 }
