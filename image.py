@@ -972,12 +972,13 @@ class ImageApplyLUT:
 
     # TODO: check if we can do without numpy
     def execute(self, image, lut_file, gamma_correction, clip_values, strength):
-        from colour.io.luts.iridas_cube import read_LUT_IridasCube
-
         lut_file_path = folder_paths.get_full_path("luts", lut_file)
         if not lut_file_path or not Path(lut_file_path).exists():
-            raise FileNotFoundError(f"Could not find LUT file: {lut_file_path}")
-
+            print(f"Could not find LUT file: {lut_file_path}")
+            return (image,)
+            
+        from colour.io.luts.iridas_cube import read_LUT_IridasCube
+        
         device = image.device
         lut = read_LUT_IridasCube(lut_file_path)
         lut.name = lut_file
