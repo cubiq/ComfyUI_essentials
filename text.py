@@ -3,13 +3,12 @@ import torch
 from nodes import MAX_RESOLUTION
 import torchvision.transforms.v2 as T
 
-def calculate_metrics (text, font):
-    lines = text.split("\n")
+def calculate_metrics (lines, font):
     # Calculate the width and height of the text
     text_width = max(font.getbbox(line)[2] for line in lines)
-    line_height = font.getmask(text).getbbox()[3] + font.getmetrics()[1]  # add descent to height
+    line_height = font.getmask(lines[0]).getbbox()[3] + font.getmetrics()[1]  # add descent to height
     text_height = line_height * len(lines)
-    return lines, text_width, text_height, line_height
+    return text_width, text_height, line_height
 
 def get_fonts ():
     return sorted([f for f in os.listdir(FONTS_DIR) if f.endswith('.ttf') or f.endswith('.otf')])
@@ -21,6 +20,7 @@ class DetectFontSize:
             "required": {
                 "text": ("STRING", { "multiline": True, "dynamicPrompts": True, "default": "Hello, World!" }),
                 "font": (get_fonts(), ),
+                "scale": ("FLOAT", { "default": 1.0, "min": 0.001, "max": 100.0, "step": 0.01 }),
                 "area_width": ("INT", { "default": 0, "min": 0, "max": 4096, "step": 1 }),
                 "area_height": ("INT", { "default": 0, "min": 0, "max": 4096, "step": 1 }),
             }
@@ -33,24 +33,29 @@ class DetectFontSize:
     def get_text_size (self, text, font, size):
         from PIL import ImageFont
         font = ImageFont.truetype(os.path.join(FONTS_DIR, font), size)
-        lines, text_width, text_height, line_height = calculate_metrics(text, font)
-        return text_width, text_height
+        text_width, text_height, line_height = calculate_metrics(text, font)
+        return text_width, text_height, line_height
 
-    def execute(self, text, font, area_width, area_height):
+    def execute(self, text, font, scale, area_width, area_height):
+        lines = text.split("\n")
         font_size_a, font_size_b = 10, 20
-        text_width_a, text_height_a = self.get_text_size(text, font, font_size_a)
-        text_width_b, text_height_b = self.get_text_size(text, font, font_size_b)
+        text_width_a, text_height_a, line_height_a = self.get_text_size(lines, font, font_size_a)
+        text_width_b, text_height_b, line_height_b = self.get_text_size(lines, font, font_size_b)
 
         delta_text_size = max(text_width_b - text_width_a, text_height_b - text_height_a)
 
-        min_text_size = min(text_height_a, text_width_a)
+        single_line = len(lines) <= 1   
+        if not single_line:
+            text_height_a = line_height_a * (len(lines) + 1)
+
+        min_text_size = max(text_height_a, text_width_a)
         min_area_size = min(area_height, area_width)
 
         percent_change = (min_area_size - min_text_size) / delta_text_size
 
-        font_size = round(font_size_a + (font_size_b - font_size_a) * percent_change) * 1
+        font_size = round((font_size_a + (font_size_b - font_size_a) * percent_change) * scale * (area_width / area_height if single_line else 1.0))
 
-        return (font_size, text, )
+        return (2 if font_size <= 0 else font_size, text, )
 
 FONTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts")
 class DrawText:
@@ -84,7 +89,8 @@ class DrawText:
         from PIL import Image, ImageDraw, ImageFont, ImageColor, ImageFilter
 
         font = ImageFont.truetype(os.path.join(FONTS_DIR, font), size)
-        lines, text_width, text_height, line_height = calculate_metrics(text, font)
+        lines = text.split("\n")
+        text_width, text_height, line_height = calculate_metrics(lines, font)
 
         if img_composite is not None:
             img_composite = T.ToPILImage()(img_composite.permute([0,3,1,2])[0]).convert('RGBA')
