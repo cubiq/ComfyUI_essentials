@@ -39,22 +39,19 @@ class DetectFontSize:
     def execute(self, text, font, scale, area_width, area_height):
         lines = text.split("\n")
         font_size_a, font_size_b = 10, 20
-        text_width_a, text_height_a, line_height_a = self.get_text_size(lines, font, font_size_a)
-        text_width_b, text_height_b, line_height_b = self.get_text_size(lines, font, font_size_b)
+        text_width_a, text_height_a, _ = self.get_text_size(lines, font, font_size_a)
+        text_width_b, text_height_b, _ = self.get_text_size(lines, font, font_size_b)
 
-        delta_text_size = max(text_width_b - text_width_a, text_height_b - text_height_a)
+        text_aspect = text_width_a / text_height_a
+        area_aspect = area_width / area_height
 
-        single_line = len(lines) <= 1   
-        if not single_line:
-            text_height_a = line_height_a * (len(lines) + 1)
+        percent_change = 1.0
+        # touching = min(area_height - text_height_a, area_width - text_width_a)
+        if area_aspect > text_aspect:
+            percent_change = (area_height - text_height_a) / (text_height_b - text_height_a)
+        else: percent_change = (area_width - text_width_a) / (text_width_b - text_width_a) 
 
-        min_text_size = max(text_height_a, text_width_a)
-        min_area_size = min(area_height, area_width)
-
-        percent_change = (min_area_size - min_text_size) / delta_text_size
-
-        font_size = round((font_size_a + (font_size_b - font_size_a) * percent_change) * scale * (area_width / area_height if single_line else 1.0))
-
+        font_size = round((font_size_a + (font_size_b - font_size_a) * percent_change) * scale)
         return (2 if font_size <= 0 else font_size, text, )
 
 FONTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts")
