@@ -5,6 +5,7 @@ from nodes import SaveImage
 from node_helpers import pillow
 from PIL import Image, ImageOps
 
+import kornia
 import torch
 import torch.nn.functional as F
 import torchvision.transforms.v2 as T
@@ -1090,6 +1091,9 @@ class ImageColorMatch:
                 "factor": ("FLOAT", { "default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, }),
                 "device": (["auto", "cpu", "gpu"],),
                 "batch_size": ("INT", { "default": 0, "min": 0, "max": 1024, "step": 1, }),
+            },
+            "optional": {
+                "reference_mask": ("MASK",),
             }
         }
 
@@ -1097,9 +1101,7 @@ class ImageColorMatch:
     FUNCTION = "execute"
     CATEGORY = "essentials/image processing"
 
-    def execute(self, image, reference, color_space, factor, device, batch_size):
-        import kornia
-
+    def execute(self, image, reference, color_space, factor, device, batch_size, reference_mask=None):
         if "gpu" == device:
             device = comfy.model_management.get_torch_device()
         elif "auto" == device:
@@ -1109,6 +1111,26 @@ class ImageColorMatch:
 
         image = image.permute([0, 3, 1, 2])
         reference = reference.permute([0, 3, 1, 2]).to(device)
+         
+        # Ensure reference_mask is in the correct format and on the right device
+        if reference_mask is not None:
+            assert reference_mask.ndim == 3, f"Expected reference_mask to have 3 dimensions, but got {reference_mask.ndim}"
+            assert reference_mask.shape[0] == reference.shape[0], f"Frame count mismatch: reference_mask has {reference_mask.shape[0]} frames, but reference has {reference.shape[0]}"
+            
+            # Reshape mask to (batch, 1, height, width)
+            reference_mask = reference_mask.unsqueeze(1).to(device)
+             
+            # Ensure the mask is binary (0 or 1)
+            reference_mask = (reference_mask > 0.5).float()
+             
+            # Ensure spatial dimensions match
+            if reference_mask.shape[2:] != reference.shape[2:]:
+                reference_mask = comfy.utils.common_upscale(
+                    reference_mask,
+                    reference.shape[3], reference.shape[2],
+                    upscale_method='bicubic',
+                    crop='center'
+                )
 
         if batch_size == 0 or batch_size > image.shape[0]:
             batch_size = image.shape[0]
@@ -1124,7 +1146,7 @@ class ImageColorMatch:
         elif "XYZ" == color_space:
             reference = kornia.color.rgb_to_xyz(reference)
 
-        reference_mean, reference_std = self.compute_mean_std(reference)
+        reference_mean, reference_std = self.compute_mean_std(reference, reference_mask)
 
         image_batch = torch.split(image, batch_size, dim=0)
         output = []
@@ -1132,44 +1154,178 @@ class ImageColorMatch:
         for image in image_batch:
             image = image.to(device)
 
-            if "LAB" == color_space:
+            if color_space == "LAB":
                 image = kornia.color.rgb_to_lab(image)
-            elif "YCbCr" == color_space:
+            elif color_space == "YCbCr":
                 image = kornia.color.rgb_to_ycbcr(image)
-            elif "LUV" == color_space:
+            elif color_space == "LUV":
                 image = kornia.color.rgb_to_luv(image)
-            elif "YUV" == color_space:
+            elif color_space == "YUV":
                 image = kornia.color.rgb_to_yuv(image)
-            elif "XYZ" == color_space:
+            elif color_space == "XYZ":
                 image = kornia.color.rgb_to_xyz(image)
 
             image_mean, image_std = self.compute_mean_std(image)
-            out = ((image - image_mean) / (image_std + 1e-6)) * (reference_std + 1e-6) + reference_mean
-            out = factor * out + (1 - factor) * image
 
-            if "LAB" == color_space:
-                out = kornia.color.lab_to_rgb(out)
-            elif "YCbCr" == color_space:
-                out = kornia.color.ycbcr_to_rgb(out)
-            elif "LUV" == color_space:
-                out = kornia.color.luv_to_rgb(out)
-            elif "YUV" == color_space:
-                out = kornia.color.yuv_to_rgb(out)
-            elif "XYZ" == color_space:
-                out = kornia.color.xyz_to_rgb(out)
+            matched = torch.nan_to_num((image - image_mean) / image_std) * torch.nan_to_num(reference_std) + reference_mean
+            matched = factor * matched + (1 - factor) * image
 
-            out = out.permute([0, 2, 3, 1]).clamp(0, 1).to(comfy.model_management.intermediate_device())
+            if color_space == "LAB":
+                matched = kornia.color.lab_to_rgb(matched)
+            elif color_space == "YCbCr":
+                matched = kornia.color.ycbcr_to_rgb(matched)
+            elif color_space == "LUV":
+                matched = kornia.color.luv_to_rgb(matched)
+            elif color_space == "YUV":
+                matched = kornia.color.yuv_to_rgb(matched)
+            elif color_space == "XYZ":
+                matched = kornia.color.xyz_to_rgb(matched)
+
+            out = matched.permute([0, 2, 3, 1]).clamp(0, 1).to(comfy.model_management.intermediate_device())
             output.append(out)
-        
+
         out = None
         output = torch.cat(output, dim=0)
-
         return (output,)
 
-    def compute_mean_std(self, image):
-        mean = torch.mean(image, dim=(2, 3), keepdim=True)
-        std = torch.std(image, dim=(2, 3), keepdim=True)
+    def compute_mean_std(self, tensor, mask=None):
+        if mask is not None:
+            # Apply mask to the tensor
+            masked_tensor = tensor * mask
+
+            # Calculate the sum of the mask for each channel
+            mask_sum = mask.sum(dim=[2, 3], keepdim=True)
+
+            # Avoid division by zero
+            mask_sum = torch.clamp(mask_sum, min=1e-6)
+
+            # Calculate mean and std only for masked area
+            mean = torch.nan_to_num(masked_tensor.sum(dim=[2, 3], keepdim=True) / mask_sum)
+            std = torch.sqrt(torch.nan_to_num(((masked_tensor - mean) ** 2 * mask).sum(dim=[2, 3], keepdim=True) / mask_sum))
+        else:
+            mean = tensor.mean(dim=[2, 3], keepdim=True)
+            std = tensor.std(dim=[2, 3], keepdim=True)
         return mean, std
+
+class ImageColorMatchAdobe(ImageColorMatch):
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "reference": ("IMAGE",),
+                "color_space": (["RGB", "LAB"],),
+                "luminance_factor": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "color_intensity_factor": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "fade_factor": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05}),
+                "neutralization_factor": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
+                "device": (["auto", "cpu", "gpu"],),
+            },
+            "optional": {
+                "reference_mask": ("MASK",),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/image processing"
+
+    def analyze_color_statistics(self, image, mask=None):
+        # Assuming image is in RGB format
+        l, a, b = kornia.color.rgb_to_lab(image).chunk(3, dim=1)
+
+        if mask is not None:
+            # Ensure mask is binary and has the same spatial dimensions as the image
+            mask = F.interpolate(mask, size=image.shape[2:], mode='nearest')
+            mask = (mask > 0.5).float()
+            
+            # Apply mask to each channel
+            l = l * mask
+            a = a * mask
+            b = b * mask
+            
+            # Compute masked mean and std
+            num_pixels = mask.sum()
+            mean_l = (l * mask).sum() / num_pixels
+            mean_a = (a * mask).sum() / num_pixels
+            mean_b = (b * mask).sum() / num_pixels
+            std_l = torch.sqrt(((l - mean_l)**2 * mask).sum() / num_pixels)
+            var_ab = ((a - mean_a)**2 + (b - mean_b)**2) * mask
+            std_ab = torch.sqrt(var_ab.sum() / num_pixels)
+        else:
+            mean_l = l.mean()
+            std_l = l.std()
+            mean_a = a.mean()
+            mean_b = b.mean()
+            std_ab = torch.sqrt(a.var() + b.var())
+
+        return mean_l, std_l, mean_a, mean_b, std_ab
+
+    def apply_color_transformation(self, image, source_stats, dest_stats, L, C, N):
+        l, a, b = kornia.color.rgb_to_lab(image).chunk(3, dim=1)
+        
+        # Unpack statistics
+        src_mean_l, src_std_l, src_mean_a, src_mean_b, src_std_ab = source_stats
+        dest_mean_l, dest_std_l, dest_mean_a, dest_mean_b, dest_std_ab = dest_stats
+
+        # Adjust luminance
+        l_new = (l - dest_mean_l) * (src_std_l / dest_std_l) * L + src_mean_l
+
+        # Neutralize color cast
+        a = a - N * dest_mean_a
+        b = b - N * dest_mean_b
+
+        # Adjust color intensity
+        a_new = a * (src_std_ab / dest_std_ab) * C
+        b_new = b * (src_std_ab / dest_std_ab) * C
+
+        # Combine channels
+        lab_new = torch.cat([l_new, a_new, b_new], dim=1)
+
+        # Convert back to RGB
+        rgb_new = kornia.color.lab_to_rgb(lab_new)
+
+        return rgb_new
+
+    def execute(self, image, reference, color_space, luminance_factor, color_intensity_factor, fade_factor, neutralization_factor, device, reference_mask=None):
+        if "gpu" == device:
+            device = comfy.model_management.get_torch_device()
+        elif "auto" == device:
+            device = comfy.model_management.intermediate_device()
+        else:
+            device = 'cpu'
+
+        # Ensure image and reference are in the correct shape (B, C, H, W)
+        image = image.permute(0, 3, 1, 2).to(device)
+        reference = reference.permute(0, 3, 1, 2).to(device)
+
+        # Handle reference_mask (if provided)
+        if reference_mask is not None:
+            # Ensure reference_mask is 4D (B, 1, H, W)
+            if reference_mask.ndim == 2:
+                reference_mask = reference_mask.unsqueeze(0).unsqueeze(0)
+            elif reference_mask.ndim == 3:
+                reference_mask = reference_mask.unsqueeze(1)
+            reference_mask = reference_mask.to(device)
+
+         # Analyze color statistics
+        source_stats = self.analyze_color_statistics(reference, reference_mask)
+        dest_stats = self.analyze_color_statistics(image)
+
+        # Apply color transformation
+        transformed = self.apply_color_transformation(
+            image, source_stats, dest_stats, 
+            luminance_factor, color_intensity_factor, neutralization_factor
+        )
+
+        # Apply fade factor
+        result = fade_factor * transformed + (1 - fade_factor) * image
+
+        # Convert back to (B, H, W, C) format and ensure values are in [0, 1] range
+        result = result.permute(0, 2, 3, 1).clamp(0, 1)
+
+        return (result,)
+
 
 class ImageHistogramMatch:
     @classmethod
@@ -1486,6 +1642,7 @@ IMAGE_CLASS_MAPPINGS = {
     "PixelOEPixelize+": PixelOEPixelize,
     "ImagePosterize+": ImagePosterize,
     "ImageColorMatch+": ImageColorMatch,
+    "ImageColorMatchAdobe+": ImageColorMatchAdobe,
     "ImageHistogramMatch+": ImageHistogramMatch,
 
     # Utilities
@@ -1529,6 +1686,7 @@ IMAGE_NAME_MAPPINGS = {
     "PixelOEPixelize+": "🔧 Pixelize",
     "ImagePosterize+": "🔧 Image Posterize",
     "ImageColorMatch+": "🔧 Image Color Match",
+    "ImageColorMatchAdobe+": "🔧 Image Color Match Adobe",
     "ImageHistogramMatch+": "🔧 Image Histogram Match",
 
     # Utilities
