@@ -1322,7 +1322,7 @@ class ImageColorMatchAdobe(ImageColorMatch):
         result = fade_factor * transformed + (1 - fade_factor) * image
 
         # Convert back to (B, H, W, C) format and ensure values are in [0, 1] range
-        result = result.permute(0, 2, 3, 1).clamp(0, 1)
+        result = result.permute(0, 2, 3, 1).clamp(0, 1).to(comfy.model_management.intermediate_device())
 
         return (result,)
 
