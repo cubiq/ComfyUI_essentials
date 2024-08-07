@@ -1,6 +1,10 @@
 import torch
 import numpy as np
 import scipy
+import os
+import re
+
+FONTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts")
 
 # from https://github.com/pythongosssss/ComfyUI-Custom-Scripts
 class AnyType(str):
@@ -37,3 +41,41 @@ def expand_mask(mask, expand, tapered_corners):
         out.append(output)
 
     return torch.stack(out, dim=0)
+
+def parse_string_to_list(s):
+    elements = s.split(',')
+    result = []
+
+    def parse_number(s):
+        try:
+            if '.' in s:
+                return float(s)
+            else:
+                return int(s)
+        except ValueError:
+            return 0
+
+    def decimal_places(s):
+        if '.' in s:
+            return len(s.split('.')[1])
+        return 0
+
+    for element in elements:
+        element = element.strip()
+        if '...' in element:
+            start, rest = element.split('...')
+            end, step = rest.split('+')
+            decimals = decimal_places(step)
+            start = parse_number(start)
+            end = parse_number(end)
+            step = parse_number(step)
+            current = start
+            if (start > end and step > 0) or (start < end and step < 0):
+                step = -step
+            while current <= end:
+                result.append(round(current, decimals))
+                current += step
+        else:
+            result.append(round(parse_number(element), decimal_places(element)))
+
+    return result
