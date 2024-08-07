@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_essentials"
 description = "Essential nodes that are weirdly missing from ComfyUI core. With few exceptions they are new features and not commodities."
-version = "1.0.0"
+version = "1.1.0"
 license = { file = "LICENSE" }
 dependencies = ["numba", "colour-science", "rembg", "pixeloe"]
 
