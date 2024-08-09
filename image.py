@@ -1047,6 +1047,54 @@ class ImageCAS:
 
         return (output,)
 
+class ImageSmartSharpen:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "remove_noise": ("FLOAT", { "default": 0.5, "min": 0.0, "max": 1.0, "step": 0.05, }),
+                "preserve_edges": ("FLOAT", { "default": 0.5, "min": 0.0, "max": 1.0, "step": 0.05 }),
+                "sharpen": ("FLOAT", { "default": 5.0, "min": 0.0, "max": 25.0, "step": 0.5 }),
+                "ratio": ("FLOAT", { "default": 0.5, "min": 0.0, "max": 1.0, "step": 0.1 }),
+                "device": (["auto", "cpu", "gpu"],),
+        }}
+
+    RETURN_TYPES = ("IMAGE",)
+    CATEGORY = "essentials/image processing"
+    FUNCTION = "execute"
+
+    def execute(self, image, remove_noise, preserve_edges, sharpen, ratio, device):
+        if "gpu" == device:
+            device = comfy.model_management.get_torch_device()
+        elif "auto" == device:
+            device = comfy.model_management.intermediate_device()
+        else:
+            device = 'cpu'
+        
+        image = image.permute(0,3,1,2).to(device)
+
+        if remove_noise > 0:
+            remove_noise = int(remove_noise * 15)
+            sigma = 0.3 * ((remove_noise - 1) * 0.5 - 1) + 0.8
+            preserve_edges = max(1.0 - preserve_edges, 0.1)
+            if remove_noise % 2 == 0:
+                remove_noise += 1
+            blurred = kornia.filters.bilateral_blur(image, remove_noise, preserve_edges, (sigma, sigma))
+        else:
+            blurred = image
+
+        if sharpen > 0:
+            sharpened = kornia.enhance.sharpness(image, sharpen)
+        else:
+            sharpened = image
+
+        output = ratio * sharpened + (1 - ratio) * blurred
+        output = torch.clamp(output, 0, 1)
+        output = output.permute(0,2,3,1).to(comfy.model_management.intermediate_device())
+        return (output,)
+
+
 class ExtractKeyframes:
     @classmethod
     def INPUT_TYPES(s):
@@ -1644,6 +1692,7 @@ IMAGE_CLASS_MAPPINGS = {
     "ImageColorMatch+": ImageColorMatch,
     "ImageColorMatchAdobe+": ImageColorMatchAdobe,
     "ImageHistogramMatch+": ImageHistogramMatch,
+    "ImageSmartSharpen+": ImageSmartSharpen,
 
     # Utilities
     "GetImageSize+": GetImageSize,
@@ -1688,6 +1737,7 @@ IMAGE_NAME_MAPPINGS = {
     "ImageColorMatch+": "🔧 Image Color Match",
     "ImageColorMatchAdobe+": "🔧 Image Color Match Adobe",
     "ImageHistogramMatch+": "🔧 Image Histogram Match",
+    "ImageSmartSharpen+": "🔧 Image Smart Sharpen",
 
     # Utilities
     "GetImageSize+": "🔧 Get Image Size",
