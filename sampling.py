@@ -3,9 +3,11 @@ import comfy.samplers
 import comfy.sample
 import torch
 from nodes import common_ksampler, CLIPTextEncode
+from comfy.utils import ProgressBar
 from .utils import expand_mask, FONTS_DIR, parse_string_to_list
 import torchvision.transforms.v2 as T
 import torch.nn.functional as F
+import logging
 
 class KSamplerVariationsWithNoise:
     @classmethod
@@ -212,7 +214,7 @@ class FluxSamplerParams:
                     "latent_image": ("LATENT", ),
 
                     "noise": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "?" }),
-                    "sampler": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "ipndm" }),
+                    "sampler": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "euler" }),
                     "scheduler": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "simple" }),
                     "steps": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "20" }),
                     "guidance": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "3.5" }),
@@ -283,15 +285,12 @@ class FluxSamplerParams:
         
         if not is_schnell:
             max_shift = "1.15" if max_shift == "" else max_shift
-            max_shift = parse_string_to_list(max_shift)
-        else:    
-            max_shift = [0]
-        
-        if base_shift == "":
-            if is_schnell:
-                base_shift = "1.0"
-            else:
-                base_shift = "0.5"
+            base_shift = "0.5" if base_shift == "" else base_shift
+        else:
+            max_shift = "0"
+            base_shift = "1.0" if base_shift == "" else base_shift
+
+        max_shift = parse_string_to_list(max_shift)
         base_shift = parse_string_to_list(base_shift)
         
         split_sigmas = "1.0" if split_sigmas == "" else split_sigmas
@@ -316,6 +315,12 @@ class FluxSamplerParams:
         width = latent_image["samples"].shape[3]*8
         height = latent_image["samples"].shape[2]*8
 
+        # count total number of samples
+        total_samples = len(cond_encoded) * len(noise) * len(max_shift) * len(base_shift) * len(guidance) * len(sampler) * len(scheduler) * len(steps) * len(denoise) * len(split_sigmas)
+        current_sample = 0
+        if total_samples > 1:
+            pbar = ProgressBar(total_samples)
+
         for i in range(len(cond_encoded)):
             conditioning = cond_encoded[i]
             ct = cond_text[i] if cond_text else None
@@ -337,12 +342,16 @@ class FluxSamplerParams:
                                         for d in denoise:
                                             sigmas = basicschedueler.get_sigmas(work_model, sc, st, d)[0]
                                             for ss in split_sigmas:
+                                                current_sample += 1
+                                                logging.info(f"Sampling {current_sample}/{total_samples} with seed {n}, sampler {s}, scheduler {sc}, steps {st}, guidance {g}, max_shift {ms}, base_shift {bs}, denoise {d}, split_sigmas {ss}")
                                                 sigmas = splitsigmadenoise.get_sigmas(sigmas, ss)[1]
                                                 start_time = time.time()
                                                 latent = samplercustomadvanced.sample(randnoise, guider, samplerobj, sigmas, latent_image)[1]
                                                 elapsed_time = time.time() - start_time
                                                 out_params.append({"time": elapsed_time,
                                                                 "seed": n,
+                                                                "width": width,
+                                                                "height": height,
                                                                 "sampler": s,
                                                                 "scheduler": sc,
                                                                 "steps": st,
@@ -357,6 +366,8 @@ class FluxSamplerParams:
                                                     out_latent = latent
                                                 else:
                                                     out_latent = latentbatch.batch(out_latent, latent)[0]
+                                                if total_samples > 1:
+                                                    pbar.update(1)
 
         return (out_latent, out_params)
 
@@ -366,8 +377,8 @@ class PlotParameters:
         return {"required": {
                     "images": ("IMAGE", ),
                     "params": ("SAMPLER_PARAMS", ),
-                    "order_by": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler"], ),
-                    "cols_value": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler"], ),
+                    "order_by": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift", "split_sigmas"], ),
+                    "cols_value": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift", "split_sigmas"], ),
                     "cols_num": ("INT", {"default": -1, "min": -1, "max": 1024 }),
                     "add_prompt": (["false", "true", "excerpt"], ),
                 }}
@@ -406,7 +417,7 @@ class PlotParameters:
             text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, denoise: {param['denoise']}\nsampler: {param['sampler']}, sched: {param['scheduler']}, sigmas at: {param['split_sigmas']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}"
             lines = text.split("\n")
             text_height = line_height * len(lines)
-            text_image = Image.new('RGB', (width, text_height), color=(0, 0, 0, 0))
+            text_image = Image.new('RGB', (width, text_height), color=(0, 0, 0))
 
             for i, line in enumerate(lines):
                 draw = ImageDraw.Draw(text_image)
@@ -424,7 +435,7 @@ class PlotParameters:
                 cols = math.ceil(width / char_width)
                 prompt_lines = textwrap.wrap(prompt, width=cols)
                 prompt_height = line_height * len(prompt_lines)
-                prompt_image = Image.new('RGB', (width, prompt_height), color=(0, 0, 0, 0))
+                prompt_image = Image.new('RGB', (width, prompt_height), color=(0, 0, 0))
 
                 for i, line in enumerate(prompt_lines):
                     draw = ImageDraw.Draw(prompt_image)
@@ -432,7 +443,9 @@ class PlotParameters:
 
                 prompt_image = T.ToTensor()(prompt_image).to(image.device)
                 image = torch.cat([image, prompt_image], 1)
-
+            
+            # a little cleanup
+            image = torch.nan_to_num(image, nan=0.0).clamp(0.0, 1.0)
             out_image.append(image)
         
         # ensure all images have the same height
