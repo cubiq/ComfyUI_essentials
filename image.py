@@ -16,6 +16,7 @@ import math
 import os
 import numpy as np
 import folder_paths
+from pathlib import Path
 import random
 
 """
@@ -927,7 +928,32 @@ class ImagePosterize:
         return(image,)
 
 
-LUTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "luts")
+script_directory = Path(__file__).parent
+folder_paths.add_model_folder_path("luts", (script_directory / "luts").as_posix())
+folder_paths.add_model_folder_path(
+    "luts", (Path(folder_paths.models_dir) / "luts").as_posix()
+)
+
+class StringToLuts:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "lut_file_name": (
+                    "STRING",
+                    {"multiline": False, "default": "lut_file.cube"},
+                ),
+            }
+        }
+
+    RETURN_TYPES = (folder_paths.get_filename_list("luts"),)
+    RETURN_NAMES = ("lut_file",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/image processing"
+
+    def execute(self, lut_file_name):
+        return (lut_file_name,)
+
 # From https://github.com/yoonsikp/pycubelut/blob/master/pycubelut.py (MIT license)
 class ImageApplyLUT:
     @classmethod
@@ -935,7 +961,7 @@ class ImageApplyLUT:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "lut_file": (sorted([f for f in os.listdir(LUTS_DIR) if f.lower().endswith('.cube')]), ),
+                "lut_file": (folder_paths.get_filename_list("luts"),),
                 "gamma_correction": ("BOOLEAN", { "default": True }),
                 "clip_values": ("BOOLEAN", { "default": True }),
                 "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.1 }),
@@ -947,10 +973,15 @@ class ImageApplyLUT:
 
     # TODO: check if we can do without numpy
     def execute(self, image, lut_file, gamma_correction, clip_values, strength):
+        lut_file_path = folder_paths.get_full_path("luts", lut_file)
+        if not lut_file_path or not Path(lut_file_path).exists():
+            print(f"Could not find LUT file: {lut_file_path}")
+            return (image,)
+            
         from colour.io.luts.iridas_cube import read_LUT_IridasCube
-
+        
         device = image.device
-        lut = read_LUT_IridasCube(os.path.join(LUTS_DIR, lut_file))
+        lut = read_LUT_IridasCube(lut_file_path)
         lut.name = lut_file
 
         if clip_values:
@@ -1699,7 +1730,7 @@ IMAGE_CLASS_MAPPINGS = {
     "ImageToDevice+": ImageToDevice,
     "ImagePreviewFromLatent+": ImagePreviewFromLatent,
     "NoiseFromImage+": NoiseFromImage,
-
+    "StringToLuts+": StringToLuts,
     #"ExtractKeyframes+": ExtractKeyframes,
 }
 
@@ -1744,4 +1775,5 @@ IMAGE_NAME_MAPPINGS = {
     "ImageToDevice+": "🔧 Image To Device",
     "ImagePreviewFromLatent+": "🔧 Image Preview From Latent",
     "NoiseFromImage+": "🔧 Noise From Image",
+    "StringToLuts+": "🔧 String To Luts",
 }
