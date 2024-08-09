@@ -274,8 +274,7 @@ class FluxSamplerParams:
                 steps = "4"
             else:
                 steps = "20"
-        steps = steps.replace("\n", ",").split(",")
-        steps = [int(s) for s in steps]
+        steps = parse_string_to_list(steps)
         
         denoise = "1.0" if denoise == "" else denoise
         denoise = parse_string_to_list(denoise)
@@ -406,7 +405,7 @@ class PlotParameters:
         width = images.shape[2]
         out_image = []
 
-        font = ImageFont.truetype(os.path.join(FONTS_DIR, 'ShareTechMono-Regular.ttf'), min(48, int(32*(width/1024))))
+        font = ImageFont.truetype(os.path.join(FONTS_DIR, 'ShareTechMono-Regular.ttf'), min(48, int(31*(width/1024))))
         text_padding = 3
         line_height = font.getmask('Q').getbbox()[3] + font.getmetrics()[1] + text_padding*2
         char_width = font.getbbox('M')[2]+1 # using monospace font
@@ -414,7 +413,7 @@ class PlotParameters:
         for (image, param) in zip(images, params):
             image = image.permute(2, 0, 1)
 
-            text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, denoise: {param['denoise']}\nsampler: {param['sampler']}, sched: {param['scheduler']}, sigmas at: {param['split_sigmas']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}"
+            text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, size: {param['width']}×{param['height']}\ndenoise: {param['denoise']}, sampler: {param['sampler']}, sched: {param['scheduler']}, sigmas: {param['split_sigmas']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}"
             lines = text.split("\n")
             text_height = line_height * len(lines)
             text_image = Image.new('RGB', (width, text_height), color=(0, 0, 0))
