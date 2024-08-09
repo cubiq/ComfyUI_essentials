@@ -205,6 +205,40 @@ class TextEncodeForSamplerParams:
 
         return (output, )
 
+class SamplerSelectHelper:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            **{s: ("BOOLEAN", { "default": False }) for s in comfy.samplers.KSampler.SAMPLERS},
+        }}
+
+    RETURN_TYPES = ("STRING", )
+    FUNCTION = "execute"
+    CATEGORY = "essentials/sampling"
+
+    def execute(self, **values):
+        values = [v for v in values if values[v]]
+        values = ", ".join(values)
+
+        return (values, )
+
+class SchedulerSelectHelper:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            **{s: ("BOOLEAN", { "default": False }) for s in comfy.samplers.KSampler.SCHEDULERS},
+        }}
+
+    RETURN_TYPES = ("STRING", )
+    FUNCTION = "execute"
+    CATEGORY = "essentials/sampling"
+
+    def execute(self, **values):
+        values = [v for v in values if values[v]]
+        values = ", ".join(values)
+
+        return (values, )
+
 class FluxSamplerParams:
     @classmethod
     def INPUT_TYPES(s):
@@ -405,7 +439,7 @@ class PlotParameters:
         width = images.shape[2]
         out_image = []
 
-        font = ImageFont.truetype(os.path.join(FONTS_DIR, 'ShareTechMono-Regular.ttf'), min(48, int(31*(width/1024))))
+        font = ImageFont.truetype(os.path.join(FONTS_DIR, 'ShareTechMono-Regular.ttf'), min(48, int(32*(width/1024))))
         text_padding = 3
         line_height = font.getmask('Q').getbbox()[3] + font.getmetrics()[1] + text_padding*2
         char_width = font.getbbox('M')[2]+1 # using monospace font
@@ -413,7 +447,7 @@ class PlotParameters:
         for (image, param) in zip(images, params):
             image = image.permute(2, 0, 1)
 
-            text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, size: {param['width']}×{param['height']}\ndenoise: {param['denoise']}, sampler: {param['sampler']}, sched: {param['scheduler']}, sigmas: {param['split_sigmas']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}"
+            text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, size: {param['width']}×{param['height']}\ndenoise: {param['denoise']}, sampler: {param['sampler']}, sched: {param['scheduler']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}, sigmas: {param['split_sigmas']}"
             lines = text.split("\n")
             text_height = line_height * len(lines)
             text_image = Image.new('RGB', (width, text_height), color=(0, 0, 0))
@@ -501,6 +535,8 @@ SAMPLING_CLASS_MAPPINGS = {
     "FluxSamplerParams+": FluxSamplerParams,
     "PlotParameters+": PlotParameters,
     "TextEncodeForSamplerParams+": TextEncodeForSamplerParams,
+    "SamplerSelectHelper+": SamplerSelectHelper,
+    "SchedulerSelectHelper+": SchedulerSelectHelper,
 }
 
 SAMPLING_NAME_MAPPINGS = {
@@ -510,4 +546,6 @@ SAMPLING_NAME_MAPPINGS = {
     "FluxSamplerParams+": "🔧 Flux Sampler Parameters",
     "PlotParameters+": "🔧 Plot Sampler Parameters",
     "TextEncodeForSamplerParams+": "🔧Text Encode for Sampler Params",
+    "SamplerSelectHelper+": "🔧 Sampler Select Helper",
+    "SchedulerSelectHelper+": "🔧 Scheduler Select Helper",
 }
