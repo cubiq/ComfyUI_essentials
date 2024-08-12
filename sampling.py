@@ -247,14 +247,13 @@ class FluxSamplerParams:
                     "conditioning": ("CONDITIONING", ),
                     "latent_image": ("LATENT", ),
 
-                    "noise": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "?" }),
+                    "seed": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "?" }),
                     "sampler": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "euler" }),
                     "scheduler": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "simple" }),
                     "steps": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "20" }),
                     "guidance": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "3.5" }),
                     "max_shift": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "" }),
                     "base_shift": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "" }),
-                    "split_sigmas": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "" }),
                     "denoise": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "1.0" }),
                 }}
     
@@ -263,17 +262,17 @@ class FluxSamplerParams:
     FUNCTION = "execute"
     CATEGORY = "essentials/sampling"
 
-    def execute(self, model, conditioning, latent_image, noise, sampler, scheduler, steps, guidance, max_shift, base_shift, split_sigmas, denoise):
+    def execute(self, model, conditioning, latent_image, seed, sampler, scheduler, steps, guidance, max_shift, base_shift, denoise):
         import random
         import time
-        from comfy_extras.nodes_custom_sampler import Noise_RandomNoise, BasicScheduler, BasicGuider, SamplerCustomAdvanced, SplitSigmasDenoise
+        from comfy_extras.nodes_custom_sampler import Noise_RandomNoise, BasicScheduler, BasicGuider, SamplerCustomAdvanced
         from comfy_extras.nodes_latent import LatentBatch
         from comfy_extras.nodes_model_advanced import ModelSamplingFlux, ModelSamplingAuraFlow
         from node_helpers import conditioning_set_values
 
         is_schnell = model.model.model_type == comfy.model_base.ModelType.FLOW
 
-        noise = noise.replace("\n", ",").split(",")
+        noise = seed.replace("\n", ",").split(",")
         noise = [random.randint(0, 999999) if "?" in n else int(n) for n in noise]
         if not noise:
             noise = [random.randint(0, 999999)]
@@ -325,10 +324,7 @@ class FluxSamplerParams:
 
         max_shift = parse_string_to_list(max_shift)
         base_shift = parse_string_to_list(base_shift)
-        
-        split_sigmas = "1.0" if split_sigmas == "" else split_sigmas
-        split_sigmas = parse_string_to_list(split_sigmas)
-        
+               
         cond_text = None
         if isinstance(conditioning, dict) and "encoded" in conditioning:
             cond_text = conditioning["text"]
@@ -344,12 +340,11 @@ class FluxSamplerParams:
         samplercustomadvanced = SamplerCustomAdvanced()
         latentbatch = LatentBatch()
         modelsamplingflux = ModelSamplingFlux() if not is_schnell else ModelSamplingAuraFlow()
-        splitsigmadenoise = SplitSigmasDenoise()
         width = latent_image["samples"].shape[3]*8
         height = latent_image["samples"].shape[2]*8
 
         # count total number of samples
-        total_samples = len(cond_encoded) * len(noise) * len(max_shift) * len(base_shift) * len(guidance) * len(sampler) * len(scheduler) * len(steps) * len(denoise) * len(split_sigmas)
+        total_samples = len(cond_encoded) * len(noise) * len(max_shift) * len(base_shift) * len(guidance) * len(sampler) * len(scheduler) * len(steps) * len(denoise)
         current_sample = 0
         if total_samples > 1:
             pbar = ProgressBar(total_samples)
@@ -374,33 +369,30 @@ class FluxSamplerParams:
                                     for st in steps:
                                         for d in denoise:
                                             sigmas = basicschedueler.get_sigmas(work_model, sc, st, d)[0]
-                                            for ss in split_sigmas:
-                                                current_sample += 1
-                                                logging.info(f"Sampling {current_sample}/{total_samples} with seed {n}, sampler {s}, scheduler {sc}, steps {st}, guidance {g}, max_shift {ms}, base_shift {bs}, denoise {d}, split_sigmas {ss}")
-                                                sigmas = splitsigmadenoise.get_sigmas(sigmas, ss)[1]
-                                                start_time = time.time()
-                                                latent = samplercustomadvanced.sample(randnoise, guider, samplerobj, sigmas, latent_image)[1]
-                                                elapsed_time = time.time() - start_time
-                                                out_params.append({"time": elapsed_time,
-                                                                "seed": n,
-                                                                "width": width,
-                                                                "height": height,
-                                                                "sampler": s,
-                                                                "scheduler": sc,
-                                                                "steps": st,
-                                                                "guidance": g,
-                                                                "max_shift": ms,
-                                                                "base_shift": bs,
-                                                                "denoise": d,
-                                                                "split_sigmas": ss,
-                                                                "prompt": ct})
+                                            current_sample += 1
+                                            logging.info(f"Sampling {current_sample}/{total_samples} with seed {n}, sampler {s}, scheduler {sc}, steps {st}, guidance {g}, max_shift {ms}, base_shift {bs}, denoise {d}")
+                                            start_time = time.time()
+                                            latent = samplercustomadvanced.sample(randnoise, guider, samplerobj, sigmas, latent_image)[1]
+                                            elapsed_time = time.time() - start_time
+                                            out_params.append({"time": elapsed_time,
+                                                            "seed": n,
+                                                            "width": width,
+                                                            "height": height,
+                                                            "sampler": s,
+                                                            "scheduler": sc,
+                                                            "steps": st,
+                                                            "guidance": g,
+                                                            "max_shift": ms,
+                                                            "base_shift": bs,
+                                                            "denoise": d,
+                                                            "prompt": ct})
 
-                                                if out_latent is None:
-                                                    out_latent = latent
-                                                else:
-                                                    out_latent = latentbatch.batch(out_latent, latent)[0]
-                                                if total_samples > 1:
-                                                    pbar.update(1)
+                                            if out_latent is None:
+                                                out_latent = latent
+                                            else:
+                                                out_latent = latentbatch.batch(out_latent, latent)[0]
+                                            if total_samples > 1:
+                                                pbar.update(1)
 
         return (out_latent, out_params)
 
@@ -410,8 +402,8 @@ class PlotParameters:
         return {"required": {
                     "images": ("IMAGE", ),
                     "params": ("SAMPLER_PARAMS", ),
-                    "order_by": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift", "split_sigmas"], ),
-                    "cols_value": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift", "split_sigmas"], ),
+                    "order_by": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift"], ),
+                    "cols_value": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift"], ),
                     "cols_num": ("INT", {"default": -1, "min": -1, "max": 1024 }),
                     "add_prompt": (["false", "true", "excerpt"], ),
                 }}
@@ -429,12 +421,13 @@ class PlotParameters:
             raise ValueError("Number of images and number of parameters do not match.")
 
         if order_by != "none":
-            if cols_value != "none" and cols_num < 1:
-                cols_num = len(set(p[cols_value] for p in params))
             sorted_params = sorted(params, key=lambda x: x[order_by])
             indices = [params.index(item) for item in sorted_params]
             params = sorted_params
             images = images[torch.tensor(indices)]
+
+        if cols_value != "none" and cols_num < 1:
+            cols_num = len(set(p[cols_value] for p in params))
 
         width = images.shape[2]
         out_image = []
@@ -447,7 +440,7 @@ class PlotParameters:
         for (image, param) in zip(images, params):
             image = image.permute(2, 0, 1)
 
-            text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, size: {param['width']}×{param['height']}\ndenoise: {param['denoise']}, sampler: {param['sampler']}, sched: {param['scheduler']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}, sigmas: {param['split_sigmas']}"
+            text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, size: {param['width']}×{param['height']}\ndenoise: {param['denoise']}, sampler: {param['sampler']}, sched: {param['scheduler']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}"
             lines = text.split("\n")
             text_height = line_height * len(lines)
             text_image = Image.new('RGB', (width, text_height), color=(0, 0, 0))
