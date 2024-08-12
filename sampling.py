@@ -423,11 +423,29 @@ class PlotParameters:
         if order_by != "none":
             sorted_params = sorted(params, key=lambda x: x[order_by])
             indices = [params.index(item) for item in sorted_params]
-            params = sorted_params
             images = images[torch.tensor(indices)]
+            params = sorted_params
 
-        if cols_value != "none" and cols_num < 1:
-            cols_num = len(set(p[cols_value] for p in params))
+        if cols_value != "none" and cols_num > -1:
+            groups = {}
+            for p in params:
+                value = p[cols_value]
+                if value not in groups:
+                    groups[value] = []
+                groups[value].append(p)
+            cols_num = len(groups)
+
+            sorted_params = []
+            groups = list(groups.values())
+            for g in zip(*groups):
+                sorted_params.extend(g)
+            
+            indices = [params.index(item) for item in sorted_params]
+            images = images[torch.tensor(indices)]
+            params = sorted_params
+        elif cols_num == 0:
+            cols_num = int(math.sqrt(images.shape[0]))
+            cols_num = max(1, min(cols_num, 1024))
 
         width = images.shape[2]
         out_image = []
@@ -481,11 +499,8 @@ class PlotParameters:
         
         out_image = torch.stack(out_image, 0).permute(0, 2, 3, 1)
 
+        # merge images
         if cols_num > -1:
-            if cols_num == 0:
-                cols_num = int(math.sqrt(out_image.shape[0]))
-                cols_num = max(1, min(cols_num, 1024))
-
             cols = min(cols_num, out_image.shape[0])
             b, h, w, c = out_image.shape
             rows = math.ceil(b / cols)
