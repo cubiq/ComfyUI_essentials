@@ -743,7 +743,7 @@ class ImageRandomTransform:
             ])
             out.append(tramsforms(i.unsqueeze(0)))
 
-        out = torch.cat(out, dim=0).permute([0, 2, 3, 1])
+        out = torch.cat(out, dim=0).permute([0, 2, 3, 1]).clamp(0, 1)
 
         return (out,)
 
