@@ -11,8 +11,8 @@ class SimpleMath:
     def INPUT_TYPES(s):
         return {
             "optional": {
-                "a": ("INT,FLOAT", { "default": 0.0, "step": 0.1 }),
-                "b": ("INT,FLOAT", { "default": 0.0, "step": 0.1 }),
+                "a": (any, { "default": 0.0 }),
+                "b": (any, { "default": 0.0 }),
             },
             "required": {
                 "value": ("STRING", { "multiline": False, "default": "" }),
@@ -26,6 +26,9 @@ class SimpleMath:
     def execute(self, value, a = 0.0, b = 0.0):
         import ast
         import operator as op
+
+        a = float(a)
+        b = float(b)
 
         operators = {
             ast.Add: op.add,
