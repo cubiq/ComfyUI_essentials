@@ -21,6 +21,7 @@ class DrawText:
                 "vertical_align": (["top", "center", "bottom"],),
                 "offset_x": ("INT", { "default": 0, "min": -MAX_RESOLUTION, "max": MAX_RESOLUTION, "step": 1 }),
                 "offset_y": ("INT", { "default": 0, "min": -MAX_RESOLUTION, "max": MAX_RESOLUTION, "step": 1 }),
+                "direction": (["ltr", "rtl"],),
             },
             "optional": {
                 "img_composite": ("IMAGE",),
@@ -31,12 +32,14 @@ class DrawText:
     FUNCTION = "execute"
     CATEGORY = "essentials/text"
 
-    def execute(self, text, font, size, color, background_color, shadow_distance, shadow_blur, shadow_color, horizontal_align, vertical_align, offset_x, offset_y, img_composite=None):
+    def execute(self, text, font, size, color, background_color, shadow_distance, shadow_blur, shadow_color, horizontal_align, vertical_align, offset_x, offset_y, direction, img_composite=None):
         from PIL import Image, ImageDraw, ImageFont, ImageColor, ImageFilter
 
         font = ImageFont.truetype(os.path.join(FONTS_DIR, font), size)
 
         lines = text.split("\n")
+        if direction == "rtl":
+            lines = [line[::-1] for line in lines]
 
         # Calculate the width and height of the text
         text_width = max(font.getbbox(line)[2] for line in lines)

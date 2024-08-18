@@ -9,6 +9,25 @@ import torchvision.transforms.v2 as T
 import torch.nn.functional as F
 import logging
 
+# From https://github.com/BlenderNeko/ComfyUI_Noise/
+def slerp(val, low, high):
+    dims = low.shape
+
+    low = low.reshape(dims[0], -1)
+    high = high.reshape(dims[0], -1)
+
+    low_norm = low/torch.norm(low, dim=1, keepdim=True)
+    high_norm = high/torch.norm(high, dim=1, keepdim=True)
+
+    low_norm[low_norm != low_norm] = 0.0
+    high_norm[high_norm != high_norm] = 0.0
+
+    omega = torch.acos((low_norm*high_norm).sum(1))
+    so = torch.sin(omega)
+    res = (torch.sin((1.0-val)*omega)/so).unsqueeze(1)*low + (torch.sin(val*omega)/so).unsqueeze(1) * high
+
+    return res.reshape(dims)
+
 class KSamplerVariationsWithNoise:
     @classmethod
     def INPUT_TYPES(s):
@@ -33,25 +52,6 @@ class KSamplerVariationsWithNoise:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "execute"
     CATEGORY = "essentials/sampling"
-
-    # From https://github.com/BlenderNeko/ComfyUI_Noise/
-    def slerp(self, val, low, high):
-        dims = low.shape
-
-        low = low.reshape(dims[0], -1)
-        high = high.reshape(dims[0], -1)
-
-        low_norm = low/torch.norm(low, dim=1, keepdim=True)
-        high_norm = high/torch.norm(high, dim=1, keepdim=True)
-
-        low_norm[low_norm != low_norm] = 0.0
-        high_norm[high_norm != high_norm] = 0.0
-
-        omega = torch.acos((low_norm*high_norm).sum(1))
-        so = torch.sin(omega)
-        res = (torch.sin((1.0-val)*omega)/so).unsqueeze(1)*low + (torch.sin(val*omega)/so).unsqueeze(1) * high
-
-        return res.reshape(dims)
 
     def prepare_mask(self, mask, shape):
         mask = torch.nn.functional.interpolate(mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])), size=(shape[2], shape[3]), mode="bilinear")
@@ -81,7 +81,7 @@ class KSamplerVariationsWithNoise:
         generator = torch.manual_seed(variation_seed)
         variation_noise = torch.randn((batch_size, 4, height, width), dtype=torch.float32, device="cpu", generator=generator).cpu()
 
-        slerp_noise = self.slerp(variation_strength, base_noise, variation_noise)
+        slerp_noise = slerp(variation_strength, base_noise, variation_noise)
 
         # Calculate sigma
         comfy.model_management.load_model_gpu(model)
@@ -159,16 +159,39 @@ class InjectLatentNoise:
                     "latent": ("LATENT", ),
                     "noise_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
                     "noise_strength": ("FLOAT", {"default": 1.0, "min": -20.0, "max": 20.0, "step":0.01, "round": 0.01}),
+                    "normalize": (["false", "true"], {"default": "false"}),
+                },
+                "optional": {
+                    "mask": ("MASK", ),
                 }}
 
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "execute"
     CATEGORY = "essentials/sampling"
 
-    def execute(self, latent, noise_seed, noise_strength):
+    def execute(self, latent, noise_seed, noise_strength, normalize="false", mask=None):
         torch.manual_seed(noise_seed)
         noise_latent = latent.copy()
-        noise_latent["samples"] = noise_latent["samples"].clone() + torch.randn_like(noise_latent["samples"]) * noise_strength
+        original_samples = noise_latent["samples"].clone()
+        random_noise = torch.randn_like(original_samples)
+
+        if normalize == "true":
+            mean = original_samples.mean()
+            std = original_samples.std()
+            random_noise = random_noise * std + mean
+
+        random_noise = original_samples + random_noise * noise_strength
+
+        if mask is not None:
+            mask = F.interpolate(mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1])), size=(random_noise.shape[2], random_noise.shape[3]), mode="bilinear")
+            mask = mask.expand((-1,random_noise.shape[1],-1,-1)).clamp(0.0, 1.0)
+            if mask.shape[0] < random_noise.shape[0]:
+                mask = mask.repeat((random_noise.shape[0] -1) // mask.shape[0] + 1, 1, 1, 1)[:random_noise.shape[0]]
+            elif mask.shape[0] > random_noise.shape[0]:
+                mask = mask[:random_noise.shape[0]]
+            random_noise = mask * random_noise + (1-mask) * original_samples
+        
+        noise_latent["samples"] = random_noise
 
         return (noise_latent, )
 
