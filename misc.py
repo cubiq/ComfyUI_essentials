@@ -70,6 +70,22 @@ class SimpleMathSlider:
     def execute(self, value):
         return (value, )
 
+class SimpleMathBoolean:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "value": ("BOOLEAN", { "default": False }),
+            },
+        }
+
+    RETURN_TYPES = ("BOOLEAN",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/utilities"
+
+    def execute(self, value):
+        return (value, )
+
 class SimpleMath:
     @classmethod
     def INPUT_TYPES(s):
@@ -405,6 +421,7 @@ MISC_CLASS_MAPPINGS = {
     "SimpleCondition+": SimpleCondition,
     "SimpleMath+": SimpleMath,
     "SimpleMathCondition+": SimpleMathCondition,
+    "SimpleMathBoolean+": SimpleMathBoolean,
     "SimpleMathFloat+": SimpleMathFloat,
     "SimpleMathInt+": SimpleMathInt,
     "SimpleMathPercent+": SimpleMathPercent,
@@ -422,6 +439,7 @@ MISC_NAME_MAPPINGS = {
     "SimpleCondition+": "🔧 Simple Condition",
     "SimpleMath+": "🔧 Simple Math",
     "SimpleMathCondition+": "🔧 Simple Math Condition",
+    "SimpleMathBoolean+": "🔧 Simple Math Boolean",
     "SimpleMathFloat+": "🔧 Simple Math Float",
     "SimpleMathInt+": "🔧 Simple Math Int",
     "SimpleMathPercent+": "🔧 Simple Math Percent",
