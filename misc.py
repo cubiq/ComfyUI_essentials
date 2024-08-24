@@ -104,13 +104,14 @@ class SimpleMath:
     FUNCTION = "execute"
     CATEGORY = "essentials/utilities"
 
-    def execute(self, value, a = 0.0, b = 0.0, c = 0.0):
+    def execute(self, value, a = 0.0, b = 0.0, c = 0.0, d = 0.0):
         import ast
         import operator as op
 
         a = float(a)
         b = float(b)
         c = float(c)
+        d = float(d)
 
         operators = {
             ast.Add: op.add,
@@ -151,6 +152,8 @@ class SimpleMath:
                     return b
                 if node.id == "c":
                     return c
+                if node.id == "d":
+                    return d
             elif isinstance(node, ast.BinOp): # <left> <operator> <right>
                 return operators[type(node.op)](eval_(node.left), eval_(node.right))
             elif isinstance(node, ast.UnaryOp): # <operator> <operand> e.g., -1
@@ -185,6 +188,30 @@ class SimpleMath:
             result = 0.0
         
         return (round(result), result, )
+
+class SimpleMathDual:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "optional": {
+                "a": (any, { "default": 0.0 }),
+                "b": (any, { "default": 0.0 }),
+                "c": (any, { "default": 0.0 }),
+                "d": (any, { "default": 0.0 }),
+            },
+            "required": {
+                "value_1": ("STRING", { "multiline": False, "default": "" }),
+                "value_2": ("STRING", { "multiline": False, "default": "" }),
+            },
+        }
+    
+    RETURN_TYPES = ("INT", "FLOAT", "INT", "FLOAT", )
+    RETURN_NAMES = ("int_1", "float_1", "int_2", "float_2" )
+    FUNCTION = "execute"
+    CATEGORY = "essentials/utilities"
+
+    def execute(self, value_1, value_2, a = 0.0, b = 0.0, c = 0.0, d = 0.0):
+        return SimpleMath().execute(value_1, a, b, c, d) + SimpleMath().execute(value_2, a, b, c, d)
 
 class SimpleMathCondition:
     @classmethod
@@ -221,7 +248,7 @@ class SimpleCondition:
                 "on_true": (any, {"default": 0}),
             },
             "optional": {
-                "on_false": (any, {"default": 0}),
+                "on_false": (any, {"default": None}),
             },
         }
 
@@ -231,8 +258,12 @@ class SimpleCondition:
 
     CATEGORY = "essentials/utilities"
 
-    def execute(self, evaluate, on_true, on_false=0):
-        return (on_true if evaluate else on_false,)
+    def execute(self, evaluate, on_true, on_false=None):
+        from comfy_execution.graph import ExecutionBlocker
+        if not evaluate:
+            return (on_false if on_false is not None else ExecutionBlocker(None),)
+
+        return (on_true,)
 
 class SimpleComparison:
     def __init__(self):
@@ -420,6 +451,7 @@ MISC_CLASS_MAPPINGS = {
     "SimpleComparison+": SimpleComparison,
     "SimpleCondition+": SimpleCondition,
     "SimpleMath+": SimpleMath,
+    "SimpleMathDual+": SimpleMathDual,
     "SimpleMathCondition+": SimpleMathCondition,
     "SimpleMathBoolean+": SimpleMathBoolean,
     "SimpleMathFloat+": SimpleMathFloat,
@@ -438,6 +470,7 @@ MISC_NAME_MAPPINGS = {
     "SimpleComparison+": "🔧 Simple Comparison",
     "SimpleCondition+": "🔧 Simple Condition",
     "SimpleMath+": "🔧 Simple Math",
+    "SimpleMathDual+": "🔧 Simple Math Dual",
     "SimpleMathCondition+": "🔧 Simple Math Condition",
     "SimpleMathBoolean+": "🔧 Simple Math Boolean",
     "SimpleMathFloat+": "🔧 Simple Math Float",
