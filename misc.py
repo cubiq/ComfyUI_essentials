@@ -70,6 +70,22 @@ class SimpleMathSlider:
     def execute(self, value):
         return (value, )
 
+class SimpleMathSliderLowRes:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "value": ("INT", { "display": "slider", "default": 5, "min": 0, "max": 10, "step": 1 }),
+            },
+        }
+
+    RETURN_TYPES = ("FLOAT",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/utilities"
+
+    def execute(self, value):
+        return (float(value/10.0), )
+
 class SimpleMathBoolean:
     @classmethod
     def INPUT_TYPES(s):
@@ -108,11 +124,25 @@ class SimpleMath:
         import ast
         import operator as op
 
-        a = float(a)
-        b = float(b)
-        c = float(c)
-        d = float(d)
+        h, w = 0.0, 0.0
+        if hasattr(a, 'shape'):
+            a = list(a.shape)
+        if hasattr(b, 'shape'):
+            b = list(b.shape)
+        if hasattr(c, 'shape'):
+            c = list(c.shape)
+        if hasattr(d, 'shape'):
+            d = list(d.shape)
 
+        if isinstance(a, str):
+            a = float(a)
+        if isinstance(b, str):
+            b = float(b)
+        if isinstance(c, str):
+            c = float(c)
+        if isinstance(d, str):
+            d = float(d)
+        
         operators = {
             ast.Add: op.add,
             ast.Sub: op.sub,
@@ -120,7 +150,9 @@ class SimpleMath:
             ast.Div: op.truediv,
             ast.FloorDiv: op.floordiv,
             ast.Pow: op.pow,
-            ast.BitXor: op.xor,
+            #ast.BitXor: op.xor,
+            #ast.BitOr: op.or_,
+            #ast.BitAnd: op.and_,
             ast.USub: op.neg,
             ast.Mod: op.mod,
             ast.Eq: op.eq,
@@ -129,8 +161,8 @@ class SimpleMath:
             ast.LtE: op.le,
             ast.Gt: op.gt,
             ast.GtE: op.ge,
-            #ast.And: op.and_,
-            #ast.Or: op.or_,
+            ast.And: lambda x, y: x and y,
+            ast.Or: lambda x, y: x or y,
             ast.Not: op.not_
         }
 
@@ -165,10 +197,8 @@ class SimpleMath:
                         return 0
                 return 1
             elif isinstance(node, ast.BoolOp):  # boolean operators (And, Or)
-                if isinstance(node.op, ast.And):
-                    return all(eval_(value) for value in node.values)
-                elif isinstance(node.op, ast.Or):
-                    return any(eval_(value) for value in node.values)
+                values = [eval_(value) for value in node.values]
+                return operators[type(node.op)](*values)
             elif isinstance(node, ast.Call): # custom function
                 if node.func.id in op_functions:
                     args =[eval_(arg) for arg in node.args]
@@ -253,7 +283,7 @@ class SimpleCondition:
         }
 
     RETURN_TYPES = (any,)
-    RETURN_NAMES = ("value",)
+    RETURN_NAMES = ("result",)
     FUNCTION = "execute"
 
     CATEGORY = "essentials/utilities"
@@ -458,6 +488,7 @@ MISC_CLASS_MAPPINGS = {
     "SimpleMathInt+": SimpleMathInt,
     "SimpleMathPercent+": SimpleMathPercent,
     "SimpleMathSlider+": SimpleMathSlider,
+    "SimpleMathSliderLowRes+": SimpleMathSliderLowRes,
 }
 
 MISC_NAME_MAPPINGS = {
@@ -477,4 +508,5 @@ MISC_NAME_MAPPINGS = {
     "SimpleMathInt+": "🔧 Simple Math Int",
     "SimpleMathPercent+": "🔧 Simple Math Percent",
     "SimpleMathSlider+": "🔧 Simple Math Slider",
+    "SimpleMathSliderLowRes+": "🔧 Simple Math Slider low-res",
 }
