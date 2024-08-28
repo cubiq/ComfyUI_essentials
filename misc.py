@@ -66,7 +66,7 @@ class SimpleMathSlider:
             },
         }
 
-    RETURN_TYPES = ("FLOAT",)
+    RETURN_TYPES = ("FLOAT", "INT",)
     FUNCTION = "execute"
     CATEGORY = "essentials/utilities"
 
@@ -76,7 +76,7 @@ class SimpleMathSlider:
         if rounding > 0:
             value = round(value, rounding)
 
-        return (value, )
+        return (value, int(value), )
 
 class SimpleMathSliderLowRes:
     @classmethod
@@ -90,7 +90,7 @@ class SimpleMathSliderLowRes:
             },
         }
 
-    RETURN_TYPES = ("FLOAT",)
+    RETURN_TYPES = ("FLOAT", "INT",)
     FUNCTION = "execute"
     CATEGORY = "essentials/utilities"
 
@@ -116,7 +116,7 @@ class SimpleMathBoolean:
     CATEGORY = "essentials/utilities"
 
     def execute(self, value):
-        return (value, )
+        return (value, int(value), )
 
 class SimpleMath:
     @classmethod
