@@ -60,6 +60,9 @@ class SimpleMathSlider:
         return {
             "required": {
                 "value": ("FLOAT", { "display": "slider", "default": 0.5, "min": 0.0, "max": 1.0, "step": 0.001 }),
+                "min": ("FLOAT", { "default": 0.0, "min": -0xffffffffffffffff, "max": 0xffffffffffffffff, "step": 0.001 }),
+                "max": ("FLOAT", { "default": 1.0, "min": -0xffffffffffffffff, "max": 0xffffffffffffffff, "step": 0.001 }),
+                "rounding": ("INT", { "default": 0, "min": 0, "max": 10, "step": 1 }),
             },
         }
 
@@ -67,7 +70,12 @@ class SimpleMathSlider:
     FUNCTION = "execute"
     CATEGORY = "essentials/utilities"
 
-    def execute(self, value):
+    def execute(self, value, min, max, rounding):
+        value = min + value * (max - min)
+        
+        if rounding > 0:
+            value = round(value, rounding)
+
         return (value, )
 
 class SimpleMathSliderLowRes:
@@ -76,6 +84,9 @@ class SimpleMathSliderLowRes:
         return {
             "required": {
                 "value": ("INT", { "display": "slider", "default": 5, "min": 0, "max": 10, "step": 1 }),
+                "min": ("FLOAT", { "default": 0.0, "min": -0xffffffffffffffff, "max": 0xffffffffffffffff, "step": 0.001 }),
+                "max": ("FLOAT", { "default": 1.0, "min": -0xffffffffffffffff, "max": 0xffffffffffffffff, "step": 0.001 }),
+                "rounding": ("INT", { "default": 0, "min": 0, "max": 10, "step": 1 }),
             },
         }
 
@@ -83,8 +94,13 @@ class SimpleMathSliderLowRes:
     FUNCTION = "execute"
     CATEGORY = "essentials/utilities"
 
-    def execute(self, value):
-        return (float(value/10.0), )
+    def execute(self, value, min, max, rounding):
+        value = 0.1 * value
+        value = min + value * (max - min)
+        if rounding > 0:
+            value = round(value, rounding)
+
+        return (value, )
 
 class SimpleMathBoolean:
     @classmethod
