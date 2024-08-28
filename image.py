@@ -196,6 +196,23 @@ class ImageListToBatch:
 
         return (out,)
 
+class ImageBatchToList:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    OUTPUT_IS_LIST = (True,)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/image batch"
+
+    def execute(self, image):
+        return ([image[i].unsqueeze(0) for i in range(image.shape[0])], )
+
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1667,6 +1684,7 @@ IMAGE_CLASS_MAPPINGS = {
     "ImageExpandBatch+": ImageExpandBatch,
     "ImageFromBatch+": ImageFromBatch,
     "ImageListToBatch+": ImageListToBatch,
+    "ImageBatchToList+": ImageBatchToList,
 
     # Image manipulation
     "ImageCompositeFromMaskBatch+": ImageCompositeFromMaskBatch,
@@ -1712,6 +1730,7 @@ IMAGE_NAME_MAPPINGS = {
     "ImageExpandBatch+": "🔧 Image Expand Batch",
     "ImageFromBatch+": "🔧 Image From Batch",
     "ImageListToBatch+": "🔧 Image List To Batch",
+    "ImageBatchToList+": "🔧 Image Batch To List",
 
     # Image manipulation
     "ImageCompositeFromMaskBatch+": "🔧 Image Composite From Mask Batch",
