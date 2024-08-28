@@ -10,8 +10,8 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms.v2 as T
 
-import warnings
-warnings.filterwarnings('ignore', module="torchvision")
+#import warnings
+#warnings.filterwarnings('ignore', module="torchvision")
 import math
 import os
 import numpy as np
@@ -944,12 +944,6 @@ class ImagePosterize:
 
         return(image,)
 
-SCRIPT_DIR = Path(__file__).parent
-folder_paths.add_model_folder_path("luts", (SCRIPT_DIR / "luts").as_posix())
-folder_paths.add_model_folder_path(
-    "luts", (Path(folder_paths.models_dir) / "luts").as_posix()
-)
-
 # From https://github.com/yoonsikp/pycubelut/blob/master/pycubelut.py (MIT license)
 class ImageApplyLUT:
     @classmethod
@@ -1727,7 +1721,6 @@ IMAGE_CLASS_MAPPINGS = {
     "ImageToDevice+": ImageToDevice,
     "ImagePreviewFromLatent+": ImagePreviewFromLatent,
     "NoiseFromImage+": NoiseFromImage,
-    "StringToLuts+": StringToLuts,
     #"ExtractKeyframes+": ExtractKeyframes,
 }
 
@@ -1773,5 +1766,4 @@ IMAGE_NAME_MAPPINGS = {
     "ImageToDevice+": "🔧 Image To Device",
     "ImagePreviewFromLatent+": "🔧 Image Preview From Latent",
     "NoiseFromImage+": "🔧 Noise From Image",
-    "StringToLuts+": "🔧 String To Luts",
 }

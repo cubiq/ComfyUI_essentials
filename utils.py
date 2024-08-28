@@ -2,9 +2,17 @@ import torch
 import numpy as np
 import scipy
 import os
-import re
+#import re
+from pathlib import Path
+import folder_paths
 
 FONTS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts")
+
+SCRIPT_DIR = Path(__file__).parent
+folder_paths.add_model_folder_path("luts", (SCRIPT_DIR / "luts").as_posix())
+folder_paths.add_model_folder_path(
+    "luts", (Path(folder_paths.models_dir) / "luts").as_posix()
+)
 
 # from https://github.com/pythongosssss/ComfyUI-Custom-Scripts
 class AnyType(str):
