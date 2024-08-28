@@ -926,32 +926,11 @@ class ImagePosterize:
 
         return(image,)
 
-
-script_directory = Path(__file__).parent
-folder_paths.add_model_folder_path("luts", (script_directory / "luts").as_posix())
+SCRIPT_DIR = Path(__file__).parent
+folder_paths.add_model_folder_path("luts", (SCRIPT_DIR / "luts").as_posix())
 folder_paths.add_model_folder_path(
     "luts", (Path(folder_paths.models_dir) / "luts").as_posix()
 )
-
-class StringToLuts:
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "lut_file_name": (
-                    "STRING",
-                    {"multiline": False, "default": "lut_file.cube"},
-                ),
-            }
-        }
-
-    RETURN_TYPES = (folder_paths.get_filename_list("luts"),)
-    RETURN_NAMES = ("lut_file",)
-    FUNCTION = "execute"
-    CATEGORY = "essentials/image processing"
-
-    def execute(self, lut_file_name):
-        return (lut_file_name,)
 
 # From https://github.com/yoonsikp/pycubelut/blob/master/pycubelut.py (MIT license)
 class ImageApplyLUT:
