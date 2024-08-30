@@ -842,8 +842,9 @@ class ImageRemoveBackground:
         output = torch.stack(output, dim=0)
         output = output.permute([0, 2, 3, 1])
         mask = output[:, :, :, 3] if output.shape[3] == 4 else torch.ones_like(output[:, :, :, 0])
+        # output = output[:, :, :, :3]
 
-        return(output[:, :, :, :3], mask,)
+        return(output, mask,)
 
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
