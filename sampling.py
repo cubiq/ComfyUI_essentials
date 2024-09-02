@@ -89,7 +89,8 @@ class KSamplerVariationsWithNoise:
         sigmas = sampler.sigmas
         sigma = sigmas[start_at_step] - sigmas[end_at_step]
         sigma /= model.model.latent_format.scale_factor
-        sigma = sigma.detach().cpu().item()
+        # Ensure sigma is on the same device as other tensors
+        sigma = torch.tensor(sigma, device=slerp_noise.device)
 
         work_latent = latent_image.copy()
         work_latent["samples"] = latent_image["samples"].clone() + slerp_noise * sigma
