@@ -8,6 +8,7 @@ from .utils import expand_mask, FONTS_DIR, parse_string_to_list
 import torchvision.transforms.v2 as T
 import torch.nn.functional as F
 import logging
+import folder_paths
 
 # From https://github.com/BlenderNeko/ComfyUI_Noise/
 def slerp(val, low, high):
@@ -190,7 +191,7 @@ class InjectLatentNoise:
             elif mask.shape[0] > random_noise.shape[0]:
                 mask = mask[:random_noise.shape[0]]
             random_noise = mask * random_noise + (1-mask) * original_samples
-        
+
         noise_latent["samples"] = random_noise
 
         return (noise_latent, )
@@ -220,7 +221,7 @@ class TextEncodeForSamplerParams:
             if t:
                 output_text.append(t)
                 output_encoded.append(CLIPTextEncode().encode(clip, t)[0])
-        
+
         #if len(output_encoded) == 1:
         #    output = output_encoded[0]
         #else:
@@ -262,7 +263,58 @@ class SchedulerSelectHelper:
 
         return (values, )
 
+class LorasForFluxParams:
+    @classmethod
+    def INPUT_TYPES(s):
+        optional_loras = ['none'] + folder_paths.get_filename_list("loras")
+        return {
+            "required": {
+                "lora_1": (folder_paths.get_filename_list("loras"), {"tooltip": "The name of the LoRA."}),
+                "strength_model_1": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "1.0" }),
+            },
+            #"optional": {
+            #    "lora_2": (optional_loras, ),
+            #    "strength_lora_2": ("STRING", { "multiline": False, "dynamicPrompts": False }),
+            #    "lora_3": (optional_loras, ),
+            #    "strength_lora_3": ("STRING", { "multiline": False, "dynamicPrompts": False }),
+            #    "lora_4": (optional_loras, ),
+            #    "strength_lora_4": ("STRING", { "multiline": False, "dynamicPrompts": False }),
+            #}
+        }
+
+    RETURN_TYPES = ("LORA_PARAMS", )
+    FUNCTION = "execute"
+    CATEGORY = "essentials/sampling"
+
+    def execute(self, lora_1, strength_model_1, lora_2="none", strength_lora_2="", lora_3="none", strength_lora_3="", lora_4="none", strength_lora_4=""):
+        output = { "loras": [], "strengths": [] }
+        output["loras"].append(lora_1)
+        output["strengths"].append(parse_string_to_list(strength_model_1))
+
+        if lora_2 != "none":
+            output["loras"].append(lora_2)
+            if strength_lora_2 == "":
+                strength_lora_2 = "1.0"
+            output["strengths"].append(parse_string_to_list(strength_lora_2))
+        if lora_3 != "none":
+            output["loras"].append(lora_3)
+            if strength_lora_3 == "":
+                strength_lora_3 = "1.0"
+            output["strengths"].append(parse_string_to_list(strength_lora_3))
+        if lora_4 != "none":
+            output["loras"].append(lora_4)
+            if strength_lora_4 == "":
+                strength_lora_4 = "1.0"
+            output["strengths"].append(parse_string_to_list(strength_lora_4))
+
+        return (output,)
+
+
 class FluxSamplerParams:
+    def __init__(self):
+        self.loraloader = None
+        self.lora = (None, None)
+
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {
@@ -278,20 +330,24 @@ class FluxSamplerParams:
                     "max_shift": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "" }),
                     "base_shift": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "" }),
                     "denoise": ("STRING", { "multiline": False, "dynamicPrompts": False, "default": "1.0" }),
+                },
+                "optional": {
+                    "loras": ("LORA_PARAMS",),
                 }}
-    
+
     RETURN_TYPES = ("LATENT","SAMPLER_PARAMS")
     RETURN_NAMES = ("latent", "params")
     FUNCTION = "execute"
     CATEGORY = "essentials/sampling"
 
-    def execute(self, model, conditioning, latent_image, seed, sampler, scheduler, steps, guidance, max_shift, base_shift, denoise):
+    def execute(self, model, conditioning, latent_image, seed, sampler, scheduler, steps, guidance, max_shift, base_shift, denoise, loras=None):
         import random
         import time
         from comfy_extras.nodes_custom_sampler import Noise_RandomNoise, BasicScheduler, BasicGuider, SamplerCustomAdvanced
         from comfy_extras.nodes_latent import LatentBatch
         from comfy_extras.nodes_model_advanced import ModelSamplingFlux, ModelSamplingAuraFlow
         from node_helpers import conditioning_set_values
+        from nodes import LoraLoader
 
         is_schnell = model.model.model_type == comfy.model_base.ModelType.FLOW
 
@@ -331,13 +387,13 @@ class FluxSamplerParams:
             else:
                 steps = "20"
         steps = parse_string_to_list(steps)
-        
+
         denoise = "1.0" if denoise == "" else denoise
         denoise = parse_string_to_list(denoise)
 
         guidance = "3.5" if guidance == "" else guidance
         guidance = parse_string_to_list(guidance)
-        
+
         if not is_schnell:
             max_shift = "1.15" if max_shift == "" else max_shift
             base_shift = "0.5" if base_shift == "" else base_shift
@@ -347,7 +403,7 @@ class FluxSamplerParams:
 
         max_shift = parse_string_to_list(max_shift)
         base_shift = parse_string_to_list(base_shift)
-               
+
         cond_text = None
         if isinstance(conditioning, dict) and "encoded" in conditioning:
             cond_text = conditioning["text"]
@@ -366,56 +422,84 @@ class FluxSamplerParams:
         width = latent_image["samples"].shape[3]*8
         height = latent_image["samples"].shape[2]*8
 
+        lora_strength_len = 1
+        if loras:
+            lora_model = loras["loras"]
+            lora_strength = loras["strengths"]
+            lora_strength_len = sum(len(i) for i in lora_strength)
+
+            if self.loraloader is None:
+                self.loraloader = LoraLoader()
+
         # count total number of samples
-        total_samples = len(cond_encoded) * len(noise) * len(max_shift) * len(base_shift) * len(guidance) * len(sampler) * len(scheduler) * len(steps) * len(denoise)
+        total_samples = len(cond_encoded) * len(noise) * len(max_shift) * len(base_shift) * len(guidance) * len(sampler) * len(scheduler) * len(steps) * len(denoise) * lora_strength_len
         current_sample = 0
         if total_samples > 1:
             pbar = ProgressBar(total_samples)
 
-        for i in range(len(cond_encoded)):
-            conditioning = cond_encoded[i]
-            ct = cond_text[i] if cond_text else None
-            for n in noise:
-                randnoise = Noise_RandomNoise(n)
-                for ms in max_shift:
-                    for bs in base_shift:
-                        if is_schnell:
-                            work_model = modelsamplingflux.patch_aura(model, bs)[0]
-                        else:
-                            work_model = modelsamplingflux.patch(model, ms, bs, width, height)[0]
-                        for g in guidance:
-                            cond = conditioning_set_values(conditioning, {"guidance": g})
-                            guider = basicguider.get_guider(work_model, cond)[0]
-                            for s in sampler:
-                                samplerobj = comfy.samplers.sampler_object(s)
-                                for sc in scheduler:
-                                    for st in steps:
-                                        for d in denoise:
-                                            sigmas = basicschedueler.get_sigmas(work_model, sc, st, d)[0]
-                                            current_sample += 1
-                                            logging.info(f"Sampling {current_sample}/{total_samples} with seed {n}, sampler {s}, scheduler {sc}, steps {st}, guidance {g}, max_shift {ms}, base_shift {bs}, denoise {d}")
-                                            start_time = time.time()
-                                            latent = samplercustomadvanced.sample(randnoise, guider, samplerobj, sigmas, latent_image)[1]
-                                            elapsed_time = time.time() - start_time
-                                            out_params.append({"time": elapsed_time,
-                                                            "seed": n,
-                                                            "width": width,
-                                                            "height": height,
-                                                            "sampler": s,
-                                                            "scheduler": sc,
-                                                            "steps": st,
-                                                            "guidance": g,
-                                                            "max_shift": ms,
-                                                            "base_shift": bs,
-                                                            "denoise": d,
-                                                            "prompt": ct})
+        lora_strength_len = 1
+        if loras:
+            lora_strength_len = len(lora_strength[0])
 
-                                            if out_latent is None:
-                                                out_latent = latent
-                                            else:
-                                                out_latent = latentbatch.batch(out_latent, latent)[0]
-                                            if total_samples > 1:
-                                                pbar.update(1)
+        for los in range(lora_strength_len):
+            if loras:
+                patched_model = self.loraloader.load_lora(model, None, lora_model[0], lora_strength[0][los], 0)[0]
+            else:
+                patched_model = model
+
+            for i in range(len(cond_encoded)):
+                conditioning = cond_encoded[i]
+                ct = cond_text[i] if cond_text else None
+                for n in noise:
+                    randnoise = Noise_RandomNoise(n)
+                    for ms in max_shift:
+                        for bs in base_shift:
+                            if is_schnell:
+                                work_model = modelsamplingflux.patch_aura(patched_model, bs)[0]
+                            else:
+                                work_model = modelsamplingflux.patch(patched_model, ms, bs, width, height)[0]
+                            for g in guidance:
+                                cond = conditioning_set_values(conditioning, {"guidance": g})
+                                guider = basicguider.get_guider(work_model, cond)[0]
+                                for s in sampler:
+                                    samplerobj = comfy.samplers.sampler_object(s)
+                                    for sc in scheduler:
+                                        for st in steps:
+                                            for d in denoise:
+                                                sigmas = basicschedueler.get_sigmas(work_model, sc, st, d)[0]
+                                                current_sample += 1
+                                                log = f"Sampling {current_sample}/{total_samples} with seed {n}, sampler {s}, scheduler {sc}, steps {st}, guidance {g}, max_shift {ms}, base_shift {bs}, denoise {d}"
+                                                lora_name = None
+                                                lora_str = 0
+                                                if loras:
+                                                    lora_name = lora_model[0]
+                                                    lora_str = lora_strength[0][los]
+                                                    log += f", lora {lora_name}, lora_strength {lora_str}"
+                                                logging.info(log)
+                                                start_time = time.time()
+                                                latent = samplercustomadvanced.sample(randnoise, guider, samplerobj, sigmas, latent_image)[1]
+                                                elapsed_time = time.time() - start_time
+                                                out_params.append({"time": elapsed_time,
+                                                                "seed": n,
+                                                                "width": width,
+                                                                "height": height,
+                                                                "sampler": s,
+                                                                "scheduler": sc,
+                                                                "steps": st,
+                                                                "guidance": g,
+                                                                "max_shift": ms,
+                                                                "base_shift": bs,
+                                                                "denoise": d,
+                                                                "prompt": ct,
+                                                                "lora": lora_name,
+                                                                "lora_strength": lora_str})
+
+                                                if out_latent is None:
+                                                    out_latent = latent
+                                                else:
+                                                    out_latent = latentbatch.batch(out_latent, latent)[0]
+                                                if total_samples > 1:
+                                                    pbar.update(1)
 
         return (out_latent, out_params)
 
@@ -425,8 +509,8 @@ class PlotParameters:
         return {"required": {
                     "images": ("IMAGE", ),
                     "params": ("SAMPLER_PARAMS", ),
-                    "order_by": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift"], ),
-                    "cols_value": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift"], ),
+                    "order_by": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift", "lora_strength"], ),
+                    "cols_value": (["none", "time", "seed", "steps", "denoise", "sampler", "scheduler", "guidance", "max_shift", "base_shift", "lora_strength"], ),
                     "cols_num": ("INT", {"default": -1, "min": -1, "max": 1024 }),
                     "add_prompt": (["false", "true", "excerpt"], ),
                     "add_params": (["false", "true", "changes only"], {"default": "true"}),
@@ -465,7 +549,7 @@ class PlotParameters:
             groups = list(groups.values())
             for g in zip(*groups):
                 sorted_params.extend(g)
-            
+
             indices = [_params.index(item) for item in sorted_params]
             images = images[torch.tensor(indices)]
             _params = sorted_params
@@ -488,14 +572,14 @@ class PlotParameters:
                     if key != "time":
                         if key not in value_tracker:
                             value_tracker[key] = set()
-                        value_tracker[key].add(value)            
+                        value_tracker[key].add(value)
             changing_keys = {key for key, values in value_tracker.items() if len(values) > 1 or key == "prompt"}
 
             result = []
             for p in _params:
                 changing_params = {key: value for key, value in p.items() if key in changing_keys}
                 result.append(changing_params)
-            
+
             _params = result
 
         for (image, param) in zip(images, _params):
@@ -506,6 +590,8 @@ class PlotParameters:
                     text = "\n".join([f"{key}: {value}" for key, value in param.items() if key != "prompt"])
                 else:
                     text = f"time: {param['time']:.2f}s, seed: {param['seed']}, steps: {param['steps']}, size: {param['width']}×{param['height']}\ndenoise: {param['denoise']}, sampler: {param['sampler']}, sched: {param['scheduler']}\nguidance: {param['guidance']}, max/base shift: {param['max_shift']}/{param['base_shift']}"
+                    if 'lora' in param and param['lora']:
+                        text += f"\nLoRA: {param['lora'][:32]}, str: {param['lora_strength']}"
 
                 lines = text.split("\n")
                 text_height = line_height * len(lines)
@@ -514,7 +600,7 @@ class PlotParameters:
                 for i, line in enumerate(lines):
                     draw = ImageDraw.Draw(text_image)
                     draw.text((text_padding, i * line_height + text_padding), line, font=font, fill=(255, 255, 255))
-                
+
                 text_image = T.ToTensor()(text_image).to(image.device)
                 image = torch.cat([image, text_image], 1)
 
@@ -535,16 +621,16 @@ class PlotParameters:
 
                 prompt_image = T.ToTensor()(prompt_image).to(image.device)
                 image = torch.cat([image, prompt_image], 1)
-            
+
             # a little cleanup
             image = torch.nan_to_num(image, nan=0.0).clamp(0.0, 1.0)
             out_image.append(image)
-        
+
         # ensure all images have the same height
         if add_prompt != "false" or add_params == "changes only":
             max_height = max([image.shape[1] for image in out_image])
             out_image = [F.pad(image, (0, 0, 0, max_height - image.shape[1])) for image in out_image]
-        
+
         out_image = torch.stack(out_image, 0).permute(0, 2, 3, 1)
 
         # merge images
@@ -558,7 +644,7 @@ class PlotParameters:
                 padding = cols - (b % cols)
                 out_image = F.pad(out_image, (0, 0, 0, 0, 0, 0, 0, padding))
                 b = out_image.shape[0]
-            
+
             # Reshape and transpose
             out_image = out_image.reshape(rows, cols, h, w, c)
             out_image = out_image.permute(0, 2, 1, 3, 4)
@@ -577,7 +663,7 @@ class PlotParameters:
 
                 draw = ImageDraw.Draw(title_text_image)
                 draw.text((width//2 - title_width//2, title_padding), title, font=title_font, fill=(255, 255, 255))
-                
+
                 title_text_image = T.ToTensor()(title_text_image).unsqueeze(0).permute([0,2,3,1]).to(out_image.device)
                 out_image = torch.cat([title_text_image, out_image], 1)
             """
@@ -593,6 +679,7 @@ SAMPLING_CLASS_MAPPINGS = {
     "TextEncodeForSamplerParams+": TextEncodeForSamplerParams,
     "SamplerSelectHelper+": SamplerSelectHelper,
     "SchedulerSelectHelper+": SchedulerSelectHelper,
+    "LorasForFluxParams+": LorasForFluxParams,
 }
 
 SAMPLING_NAME_MAPPINGS = {
@@ -604,4 +691,5 @@ SAMPLING_NAME_MAPPINGS = {
     "TextEncodeForSamplerParams+": "🔧Text Encode for Sampler Params",
     "SamplerSelectHelper+": "🔧 Sampler Select Helper",
     "SchedulerSelectHelper+": "🔧 Scheduler Select Helper",
+    "LorasForFluxParams+": "🔧 LoRA for Flux Parameters",
 }
