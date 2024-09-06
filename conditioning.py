@@ -1,5 +1,5 @@
-import torch
 from nodes import MAX_RESOLUTION, ConditioningZeroOut, ConditioningSetTimestepRange, ConditioningCombine
+import re
 
 class CLIPTextEncodeSDXLSimplified:
     @classmethod
@@ -87,14 +87,160 @@ class SD3NegativeConditioning:
 
         return (c, )
 
+class FluxAttentionSeeker:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "clip": ("CLIP",),
+            "apply_to_query": ("BOOLEAN", { "default": True }),
+            "apply_to_key": ("BOOLEAN", { "default": True }),
+            "apply_to_value": ("BOOLEAN", { "default": True }),
+            "apply_to_out": ("BOOLEAN", { "default": True }),
+            **{f"clip_l_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(12)},
+            **{f"t5xxl_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(24)},
+        }}
+
+    RETURN_TYPES = ("CLIP",)
+    FUNCTION = "execute"
+
+    CATEGORY = "essentials/conditioning"
+
+    def execute(self, clip, apply_to_query, apply_to_key, apply_to_value, apply_to_out, **values):
+        if not apply_to_key and not apply_to_query and not apply_to_value and not apply_to_out:
+            return (clip, )
+
+        m = clip.clone()
+        sd = m.patcher.model_state_dict()
+        
+        for k in sd:
+            if "self_attn" in k:
+                layer = re.search(r"\.layers\.(\d+)\.", k)
+                layer = int(layer.group(1)) if layer else None
+
+                if layer is not None and values[f"clip_l_{layer}"] != 1.0:
+                    if (apply_to_query and "q_proj" in k) or (apply_to_key and "k_proj" in k) or (apply_to_value and "v_proj" in k) or (apply_to_out and "out_proj" in k):
+                        m.add_patches({k: (None,)}, 0.0, values[f"clip_l_{layer}"])
+            elif "SelfAttention" in k:
+                block = re.search(r"\.block\.(\d+)\.", k)
+                block = int(block.group(1)) if block else None
+
+                if block is not None and values[f"t5xxl_{block}"] != 1.0:
+                    if (apply_to_query and ".q." in k) or (apply_to_key and ".k." in k) or (apply_to_value and ".v." in k) or (apply_to_out and ".o." in k):
+                        m.add_patches({k: (None,)}, 0.0, values[f"t5xxl_{block}"])
+
+        return (m, )
+
+class SD3AttentionSeekerLG:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "clip": ("CLIP",),
+            "apply_to_query": ("BOOLEAN", { "default": True }),
+            "apply_to_key": ("BOOLEAN", { "default": True }),
+            "apply_to_value": ("BOOLEAN", { "default": True }),
+            "apply_to_out": ("BOOLEAN", { "default": True }),
+            **{f"clip_l_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(12)},
+            **{f"clip_g_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(32)},
+        }}
+
+    RETURN_TYPES = ("CLIP",)
+    FUNCTION = "execute"
+
+    CATEGORY = "essentials/conditioning"
+
+    def execute(self, clip, apply_to_query, apply_to_key, apply_to_value, apply_to_out, **values):
+        if not apply_to_key and not apply_to_query and not apply_to_value and not apply_to_out:
+            return (clip, )
+
+        m = clip.clone()
+        sd = m.patcher.model_state_dict()
+        
+        for k in sd:
+            if "self_attn" in k:
+                layer = re.search(r"\.layers\.(\d+)\.", k)
+                layer = int(layer.group(1)) if layer else None
+
+                if layer is not None:
+                    if "clip_l" in k and values[f"clip_l_{layer}"] != 1.0:
+                        if (apply_to_query and "q_proj" in k) or (apply_to_key and "k_proj" in k) or (apply_to_value and "v_proj" in k) or (apply_to_out and "out_proj" in k):
+                            m.add_patches({k: (None,)}, 0.0, values[f"clip_l_{layer}"])
+                    elif "clip_g" in k and values[f"clip_g_{layer}"] != 1.0:
+                        if (apply_to_query and "q_proj" in k) or (apply_to_key and "k_proj" in k) or (apply_to_value and "v_proj" in k) or (apply_to_out and "out_proj" in k):
+                            m.add_patches({k: (None,)}, 0.0, values[f"clip_g_{layer}"])
+
+        return (m, )
+
+class SD3AttentionSeekerT5:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "clip": ("CLIP",),
+            "apply_to_query": ("BOOLEAN", { "default": True }),
+            "apply_to_key": ("BOOLEAN", { "default": True }),
+            "apply_to_value": ("BOOLEAN", { "default": True }),
+            "apply_to_out": ("BOOLEAN", { "default": True }),
+            **{f"t5xxl_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(24)},
+        }}
+
+    RETURN_TYPES = ("CLIP",)
+    FUNCTION = "execute"
+
+    CATEGORY = "essentials/conditioning"
+
+    def execute(self, clip, apply_to_query, apply_to_key, apply_to_value, apply_to_out, **values):
+        if not apply_to_key and not apply_to_query and not apply_to_value and not apply_to_out:
+            return (clip, )
+
+        m = clip.clone()
+        sd = m.patcher.model_state_dict()
+        
+        for k in sd:
+            if "SelfAttention" in k:
+                block = re.search(r"\.block\.(\d+)\.", k)
+                block = int(block.group(1)) if block else None
+
+                if block is not None and values[f"t5xxl_{block}"] != 1.0:
+                    if (apply_to_query and ".q." in k) or (apply_to_key and ".k." in k) or (apply_to_value and ".v." in k) or (apply_to_out and ".o." in k):
+                        m.add_patches({k: (None,)}, 0.0, values[f"t5xxl_{block}"])
+
+        return (m, )
+
+"""
+class FluxXAttentionSeeker:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": { "model": ("MODEL",),
+                              "q": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
+                              "k": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
+                              "v": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
+                              "out": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
+                              }}
+    RETURN_TYPES = ("MODEL",)
+    FUNCTION = "patch"
+
+    CATEGORY = "_for_testing/attention_experiments"
+
+    def patch(self, model, q, k, v, out):
+        m = model.clone()
+        sd = model.model_state_dict()
+        print(sd.keys())
+        return (m, )
+"""
+ 
 COND_CLASS_MAPPINGS = {
     "CLIPTextEncodeSDXL+": CLIPTextEncodeSDXLSimplified,
     "ConditioningCombineMultiple+": ConditioningCombineMultiple,
     "SD3NegativeConditioning+": SD3NegativeConditioning,
+    "FluxAttentionSeeker+": FluxAttentionSeeker,
+    "SD3AttentionSeekerLG+": SD3AttentionSeekerLG,
+    "SD3AttentionSeekerT5+": SD3AttentionSeekerT5,
 }
 
 COND_NAME_MAPPINGS = {
     "CLIPTextEncodeSDXL+": "🔧 SDXL CLIPTextEncode",
     "ConditioningCombineMultiple+": "🔧 Cond Combine Multiple",
-    "SD3NegativeConditioning+": "🔧 SD3 Negative Conditioning"
+    "SD3NegativeConditioning+": "🔧 SD3 Negative Conditioning",
+    "FluxAttentionSeeker+": "🔧 Flux Attention Seeker",
+    "SD3AttentionSeekerLG+": "🔧 SD3 Attention Seeker L/G",
+    "SD3AttentionSeekerT5+": "🔧 SD3 Attention Seeker T5",
 }

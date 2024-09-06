@@ -29,11 +29,11 @@ It's only thanks to generous sponsors that **the whole community** can enjoy ope
 
 ### :trophy: Gold sponsors
 
-[![Kaiber.ai](https://f.latent.vision/imgs/kaiber.png)](https://kaiber.ai/)&nbsp; &nbsp;[![Kaiber.ai](https://f.latent.vision/imgs/replicate.png)](https://replicate.com/)&nbsp; &nbsp;[![InstaSD](https://f.latent.vision/imgs/instasd.png)](https://replicate.com/)
+[![Kaiber.ai](https://f.latent.vision/imgs/kaiber.png)](https://kaiber.ai/)&nbsp; &nbsp;[![InstaSD](https://f.latent.vision/imgs/instasd.png)](https://www.instasd.com/)
 
 ### :tada: Silver sponsors
 
-[![OperArt.ai](https://f.latent.vision/imgs/openart.png?r=1)](https://openart.ai/workflows)&nbsp; &nbsp;[![OperArt.ai](https://f.latent.vision/imgs/finetuners.png)](https://www.finetuners.ai/)&nbsp; &nbsp;[![Comfy.ICU](https://f.latent.vision/imgs/comfyicu.png?r=1)](https://comfy.icu/)
+[![OperArt.ai](https://f.latent.vision/imgs/openart.png?r=1)](https://openart.ai/workflows)&nbsp; &nbsp;[![Finetuners](https://f.latent.vision/imgs/finetuners.png)](https://www.finetuners.ai/)&nbsp; &nbsp;[![Comfy.ICU](https://f.latent.vision/imgs/comfyicu.png?r=1)](https://comfy.icu/)
 
 ### Other companies supporting my projects
 
