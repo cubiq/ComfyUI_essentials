@@ -210,7 +210,7 @@ class FluxBlocksBuster:
     def INPUT_TYPES(s):
         return {"required": {
             "model": ("MODEL",),
-            "blocks": ("STRING", {"default": "double_blocks\.0\.(img|txt)_(mod|attn|mlp)\.(lin|qkv|proj|0|2)\.(weight|bias)=1.5\nsingle_blocks\.0\.(linear[12]|modulation\.lin)\.(weight|bias)=1.5", "multiline": True, "dynamicPrompts": True}),
+            "blocks": ("STRING", {"default": "## 0 = 1.0\n## 1 = 1.0\n## 2 = 1.0\n## 3 = 1.0\n## 4 = 1.0\n## 5 = 1.0\n## 6 = 1.0\n## 7 = 1.0\n## 8 = 1.0\n## 9 = 1.0\n## 10 = 1.0\n## 11 = 1.0\n## 12 = 1.0\n## 13 = 1.0\n## 14 = 1.0\n## 15 = 1.0\n## 16 = 1.0\n## 17 = 1.0\n## 18 = 1.0\n# 0 = 1.0\n# 1 = 1.0\n# 2 = 1.0\n# 3 = 1.0\n# 4 = 1.0\n# 5 = 1.0\n# 6 = 1.0\n# 7 = 1.0\n# 8 = 1.0\n# 9 = 1.0\n# 10 = 1.0\n# 11 = 1.0\n# 12 = 1.0\n# 13 = 1.0\n# 14 = 1.0\n# 15 = 1.0\n# 16 = 1.0\n# 17 = 1.0\n# 18 = 1.0\n# 19 = 1.0\n# 20 = 1.0\n# 21 = 1.0\n# 22 = 1.0\n# 23 = 1.0\n# 24 = 1.0\n# 25 = 1.0\n# 26 = 1.0\n# 27 = 1.0\n# 28 = 1.0\n# 29 = 1.0\n# 30 = 1.0\n# 31 = 1.0\n# 32 = 1.0\n# 33 = 1.0\n# 34 = 1.0\n# 35 = 1.0\n# 36 = 1.0\n# 37 = 1.0", "multiline": True, "dynamicPrompts": True}),
             #**{f"double_block_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(19)},
             #**{f"single_block_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(38)},
         }}
@@ -223,18 +223,32 @@ class FluxBlocksBuster:
         m = model.clone()
         sd = model.model_state_dict()
 
-        # blocks is a regex string
+        """
+        Also compatible with the following format:
+
+        double_blocks\.0\.(img|txt)_(mod|attn|mlp)\.(lin|qkv|proj|0|2)\.(weight|bias)=1.1
+        single_blocks\.0\.(linear[12]|modulation\.lin)\.(weight|bias)=1.1
+
+        The regex is used to match the block names
+        """
+
         blocks = blocks.split("\n")
         blocks = [b.strip() for b in blocks if b.strip()]
 
+        print("Patched blocks:")
         for k in sd:
             for block in blocks:
                 block = block.split("=")
                 value = float(block[1].strip()) if len(block) > 1 else 1.0
                 block = block[0].strip()
+                if block.startswith("##"):
+                    block = r"double_blocks\." + block[2:].strip() + r"\.(img|txt)_(mod|attn|mlp)\.(lin|qkv|proj|0|2)\.(weight|bias)"
+                elif block.startswith("#"):
+                    block = r"single_blocks\." + block[1:].strip() + r"\.(linear[12]|modulation\.lin)\.(weight|bias)"
+
                 if value != 1.0 and re.search(block, k):
-                    print(k, block, value)
                     m.add_patches({k: (None,)}, 0.0, value)
+                    print(f"{k}: {value}")
 
         return (m, )
 

@@ -496,6 +496,7 @@ class DisplayAny:
         return {
             "required": {
                 "input": (("*",{})),
+                "mode": (["raw value", "tensor shape"],),
             },
         }
 
@@ -509,7 +510,22 @@ class DisplayAny:
 
     CATEGORY = "essentials/utilities"
 
-    def execute(self, input):
+    def execute(self, input, mode):
+        if mode == "tensor shape":
+            text = []
+            def tensorShape(tensor):
+                if isinstance(tensor, dict):
+                    for k in tensor:
+                        tensorShape(tensor[k])
+                elif isinstance(tensor, list):
+                    for i in range(len(tensor)):
+                        tensorShape(tensor[i])
+                elif hasattr(tensor, 'shape'):
+                    text.append(list(tensor.shape))
+
+            tensorShape(input)
+            input = text
+
         text = str(input)
 
         return {"ui": {"text": text}, "result": (text,)}
