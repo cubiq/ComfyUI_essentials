@@ -503,7 +503,7 @@ class DisplayAny:
     def VALIDATE_INPUTS(s, input_types):
         return True
 
-    RETURN_TYPES = ()
+    RETURN_TYPES = ("STRING",)
     FUNCTION = "execute"
     OUTPUT_NODE = True
 
@@ -512,7 +512,7 @@ class DisplayAny:
     def execute(self, input):
         text = str(input)
 
-        return {"ui": {"text": text}, "result": ()}
+        return {"ui": {"text": text}, "result": (text,)}
 
 MISC_CLASS_MAPPINGS = {
     "BatchCount+": BatchCount,
