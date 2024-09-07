@@ -3,6 +3,7 @@ import torch
 from .utils import AnyType
 import comfy.model_management
 from nodes import MAX_RESOLUTION
+import time
 
 any = AnyType("*")
 
