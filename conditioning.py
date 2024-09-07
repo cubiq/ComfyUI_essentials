@@ -205,28 +205,33 @@ class SD3AttentionSeekerT5:
 
         return (m, )
 
-"""
-class FluxXAttentionSeeker:
+class FluxModelAttentionSeeker:   
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": { "model": ("MODEL",),
-                              "q": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
-                              "k": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
-                              "v": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
-                              "out": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01}),
-                              }}
+        return {"required": {
+            "model": ("MODEL",),
+            **{f"block_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(38)},
+        }}
     RETURN_TYPES = ("MODEL",)
     FUNCTION = "patch"
 
     CATEGORY = "_for_testing/attention_experiments"
 
-    def patch(self, model, q, k, v, out):
+    def patch(self, model, **blocks):
         m = model.clone()
         sd = model.model_state_dict()
-        print(sd.keys())
+        
+        for k in sd:
+            block = re.search(r"(\d+)\.(img|txt)_(mod|attn|mlp)\.(lin|qkv|proj|0|2)\.(weight|bias)", k)
+            block = int(block.group(1)) if block else None
+
+            if block is not None and blocks[f"block_{block}"] != 1.0:
+                print(k, blocks[f"block_{block}"])
+                m.add_patches({k: (None,)}, 0.0, blocks[f"block_{block}"])
+
         return (m, )
-"""
- 
+
+
 COND_CLASS_MAPPINGS = {
     "CLIPTextEncodeSDXL+": CLIPTextEncodeSDXLSimplified,
     "ConditioningCombineMultiple+": ConditioningCombineMultiple,
@@ -234,6 +239,7 @@ COND_CLASS_MAPPINGS = {
     "FluxAttentionSeeker+": FluxAttentionSeeker,
     "SD3AttentionSeekerLG+": SD3AttentionSeekerLG,
     "SD3AttentionSeekerT5+": SD3AttentionSeekerT5,
+    #"FluxModelAttentionSeeker+": FluxModelAttentionSeeker,
 }
 
 COND_NAME_MAPPINGS = {
@@ -243,4 +249,5 @@ COND_NAME_MAPPINGS = {
     "FluxAttentionSeeker+": "🔧 Flux Attention Seeker",
     "SD3AttentionSeekerLG+": "🔧 SD3 Attention Seeker L/G",
     "SD3AttentionSeekerT5+": "🔧 SD3 Attention Seeker T5",
+    #"FluxModelAttentionSeeker+": "🔧 Flux Model Attention Seeker",
 }

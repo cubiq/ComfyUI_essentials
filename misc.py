@@ -487,10 +487,38 @@ class SDXLEmptyLatentSizePicker:
 
         return ({"samples":latent}, width, height,)
 
+class DisplayAny:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "input": (("*",{})),
+            },
+        }
+
+    @classmethod
+    def VALIDATE_INPUTS(s, input_types):
+        return True
+
+    RETURN_TYPES = ()
+    FUNCTION = "execute"
+    OUTPUT_NODE = True
+
+    CATEGORY = "essentials/utilities"
+
+    def execute(self, input):
+        text = str(input)
+
+        return {"ui": {"text": text}, "result": ()}
+
 MISC_CLASS_MAPPINGS = {
     "BatchCount+": BatchCount,
     "ConsoleDebug+": ConsoleDebug,
     "DebugTensorShape+": DebugTensorShape,
+    "DisplayAny": DisplayAny,
     "ModelCompile+": ModelCompile,
     "RemoveLatentMask+": RemoveLatentMask,
     "SDXLEmptyLatentSizePicker+": SDXLEmptyLatentSizePicker,
@@ -511,6 +539,7 @@ MISC_NAME_MAPPINGS = {
     "BatchCount+": "🔧 Batch Count",
     "ConsoleDebug+": "🔧 Console Debug",
     "DebugTensorShape+": "🔧 Debug Tensor Shape",
+    "DisplayAny": "🔧 Display Any",
     "ModelCompile+": "🔧 Model Compile",
     "RemoveLatentMask+": "🔧 Remove Latent Mask",
     "SDXLEmptyLatentSizePicker+": "🔧 Empty Latent Size Picker",
