@@ -205,29 +205,36 @@ class SD3AttentionSeekerT5:
 
         return (m, )
 
-class FluxModelAttentionSeeker:   
+class FluxBlocksBuster:
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {
             "model": ("MODEL",),
-            **{f"block_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(38)},
+            "blocks": ("STRING", {"default": "double_blocks\.0\.(img|txt)_(mod|attn|mlp)\.(lin|qkv|proj|0|2)\.(weight|bias)=1.5\nsingle_blocks\.0\.(linear[12]|modulation\.lin)\.(weight|bias)=1.5", "multiline": True, "dynamicPrompts": True}),
+            #**{f"double_block_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(19)},
+            #**{f"single_block_{s}": ("FLOAT", { "display": "slider", "default": 1.0, "min": 0, "max": 5, "step": 0.05 }) for s in range(38)},
         }}
     RETURN_TYPES = ("MODEL",)
     FUNCTION = "patch"
 
-    CATEGORY = "_for_testing/attention_experiments"
+    CATEGORY = "essentials/conditioning"
 
-    def patch(self, model, **blocks):
+    def patch(self, model, blocks):
         m = model.clone()
         sd = model.model_state_dict()
-        
-        for k in sd:
-            block = re.search(r"(\d+)\.(img|txt)_(mod|attn|mlp)\.(lin|qkv|proj|0|2)\.(weight|bias)", k)
-            block = int(block.group(1)) if block else None
 
-            if block is not None and blocks[f"block_{block}"] != 1.0:
-                print(k, blocks[f"block_{block}"])
-                m.add_patches({k: (None,)}, 0.0, blocks[f"block_{block}"])
+        # blocks is a regex string
+        blocks = blocks.split("\n")
+        blocks = [b.strip() for b in blocks if b.strip()]
+
+        for k in sd:
+            for block in blocks:
+                block = block.split("=")
+                value = float(block[1].strip()) if len(block) > 1 else 1.0
+                block = block[0].strip()
+                if value != 1.0 and re.search(block, k):
+                    print(k, block, value)
+                    m.add_patches({k: (None,)}, 0.0, value)
 
         return (m, )
 
@@ -239,7 +246,7 @@ COND_CLASS_MAPPINGS = {
     "FluxAttentionSeeker+": FluxAttentionSeeker,
     "SD3AttentionSeekerLG+": SD3AttentionSeekerLG,
     "SD3AttentionSeekerT5+": SD3AttentionSeekerT5,
-    #"FluxModelAttentionSeeker+": FluxModelAttentionSeeker,
+    "FluxBlocksBuster+": FluxBlocksBuster,
 }
 
 COND_NAME_MAPPINGS = {
@@ -249,5 +256,5 @@ COND_NAME_MAPPINGS = {
     "FluxAttentionSeeker+": "🔧 Flux Attention Seeker",
     "SD3AttentionSeekerLG+": "🔧 SD3 Attention Seeker L/G",
     "SD3AttentionSeekerT5+": "🔧 SD3 Attention Seeker T5",
-    #"FluxModelAttentionSeeker+": "🔧 Flux Model Attention Seeker",
+    "FluxBlocksBuster+": "🔧 Flux Model Blocks Buster",
 }
