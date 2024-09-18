@@ -442,7 +442,7 @@ class ModelCompile():
     def execute(self, model, fullgraph, dynamic, mode):
         work_model = model.clone()
         torch._dynamo.config.suppress_errors = True
-        work_model.model.diffusion_model = torch.compile(work_model.model.diffusion_model, dynamic=dynamic, fullgraph=fullgraph, mode=mode)
+        work_model.add_object_patch("diffusion_model", torch.compile(model=work_model.get_model_object("diffusion_model"), dynamic=dynamic, fullgraph=fullgraph, mode=mode))
         return (work_model, )
 
 class RemoveLatentMask:
