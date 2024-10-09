@@ -670,11 +670,49 @@ class PlotParameters:
 
         return (out_image, )
 
+class GuidanceTimestepping:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "value": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 100.0, "step": 0.05}),
+                "start_at": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "end_at": ("FLOAT", {"default": 0.8, "min": 0.0, "max": 1.0, "step": 0.01}),
+            }
+        }
+
+    RETURN_TYPES = ("MODEL",)
+    FUNCTION = "execute"
+    CATEGORY = "essentials/sampling"
+
+    def execute(self, model, value, start_at, end_at):
+        sigma_start = model.get_model_object("model_sampling").percent_to_sigma(start_at)
+        sigma_end = model.get_model_object("model_sampling").percent_to_sigma(end_at)
+
+        def apply_apg(args):
+            cond = args["cond"]
+            uncond = args["uncond"]
+            cond_scale = args["cond_scale"]
+            sigma = args["sigma"]
+
+            sigma = sigma.detach().cpu()[0].item()
+
+            if sigma <= sigma_start and sigma > sigma_end:
+                cond_scale = value
+
+            return uncond + (cond - uncond) * cond_scale
+        
+        m = model.clone()
+        m.set_model_sampler_cfg_function(apply_apg)
+        return (m,)
+
 SAMPLING_CLASS_MAPPINGS = {
     "KSamplerVariationsStochastic+": KSamplerVariationsStochastic,
     "KSamplerVariationsWithNoise+": KSamplerVariationsWithNoise,
     "InjectLatentNoise+": InjectLatentNoise,
     "FluxSamplerParams+": FluxSamplerParams,
+    "GuidanceTimestepping+": GuidanceTimestepping,
     "PlotParameters+": PlotParameters,
     "TextEncodeForSamplerParams+": TextEncodeForSamplerParams,
     "SamplerSelectHelper+": SamplerSelectHelper,
@@ -687,6 +725,7 @@ SAMPLING_NAME_MAPPINGS = {
     "KSamplerVariationsWithNoise+": "🔧 KSampler Variations with Noise Injection",
     "InjectLatentNoise+": "🔧 Inject Latent Noise",
     "FluxSamplerParams+": "🔧 Flux Sampler Parameters",
+    "GuidanceTimestepping+": "🔧 Guidance Timestep (experimental)",
     "PlotParameters+": "🔧 Plot Sampler Parameters",
     "TextEncodeForSamplerParams+": "🔧Text Encode for Sampler Params",
     "SamplerSelectHelper+": "🔧 Sampler Select Helper",
