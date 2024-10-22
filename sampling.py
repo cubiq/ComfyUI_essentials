@@ -707,6 +707,81 @@ class GuidanceTimestepping:
         m.set_model_sampler_cfg_function(apply_apg)
         return (m,)
 
+class ModelSamplingDiscreteFlowCustom(torch.nn.Module):
+    def __init__(self, model_config=None):
+        super().__init__()
+        if model_config is not None:
+            sampling_settings = model_config.sampling_settings
+        else:
+            sampling_settings = {}
+
+        self.set_parameters(shift=sampling_settings.get("shift", 1.0), multiplier=sampling_settings.get("multiplier", 1000))
+
+    def set_parameters(self, shift=1.0, timesteps=1000, multiplier=1000, cut_off=1.0, shift_multiplier=0):
+        self.shift = shift
+        self.multiplier = multiplier
+        self.cut_off = cut_off
+        self.shift_multiplier = shift_multiplier
+        ts = self.sigma((torch.arange(1, timesteps + 1, 1) / timesteps) * multiplier)
+        self.register_buffer('sigmas', ts)
+
+    @property
+    def sigma_min(self):
+        return self.sigmas[0]
+
+    @property
+    def sigma_max(self):
+        return self.sigmas[-1]
+
+    def timestep(self, sigma):
+        return sigma * self.multiplier
+
+    def sigma(self, timestep):
+        shift = self.shift
+        if timestep.dim() == 0:
+            t = timestep.cpu().item() / self.multiplier
+            if t <= self.cut_off:
+                shift = shift * self.shift_multiplier
+            
+        return comfy.model_sampling.time_snr_shift(shift, timestep / self.multiplier)
+
+    def percent_to_sigma(self, percent):
+        if percent <= 0.0:
+            return 1.0
+        if percent >= 1.0:
+            return 0.0
+        return 1.0 - percent
+
+class ModelSamplingSD3Advanced:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": { "model": ("MODEL",),
+                              "shift": ("FLOAT", {"default": 3.0, "min": 0.0, "max": 100.0, "step":0.01}),
+                              "cut_off": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step":0.05}),
+                              "shift_multiplier": ("FLOAT", {"default": 2, "min": 0, "max": 10, "step":0.05}),
+                              }}
+
+    RETURN_TYPES = ("MODEL",)
+    FUNCTION = "execute"
+
+    CATEGORY = "essentials/sampling"
+
+    def execute(self, model, shift, multiplier=1000, cut_off=1.0, shift_multiplier=0):
+        m = model.clone()
+        
+
+        sampling_base = ModelSamplingDiscreteFlowCustom
+        sampling_type = comfy.model_sampling.CONST
+
+        class ModelSamplingAdvanced(sampling_base, sampling_type):
+            pass
+
+        model_sampling = ModelSamplingAdvanced(model.model.model_config)
+        model_sampling.set_parameters(shift=shift, multiplier=multiplier, cut_off=cut_off, shift_multiplier=shift_multiplier)
+        m.add_object_patch("model_sampling", model_sampling)
+
+        return (m, )
+
 SAMPLING_CLASS_MAPPINGS = {
     "KSamplerVariationsStochastic+": KSamplerVariationsStochastic,
     "KSamplerVariationsWithNoise+": KSamplerVariationsWithNoise,
@@ -718,6 +793,7 @@ SAMPLING_CLASS_MAPPINGS = {
     "SamplerSelectHelper+": SamplerSelectHelper,
     "SchedulerSelectHelper+": SchedulerSelectHelper,
     "LorasForFluxParams+": LorasForFluxParams,
+    "ModelSamplingSD3Advanced+": ModelSamplingSD3Advanced,
 }
 
 SAMPLING_NAME_MAPPINGS = {
@@ -731,4 +807,5 @@ SAMPLING_NAME_MAPPINGS = {
     "SamplerSelectHelper+": "🔧 Sampler Select Helper",
     "SchedulerSelectHelper+": "🔧 Scheduler Select Helper",
     "LorasForFluxParams+": "🔧 LoRA for Flux Parameters",
+    "ModelSamplingSD3Advanced+": "🔧 Model Sampling SD3 Advanced",
 }
