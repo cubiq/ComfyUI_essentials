@@ -5,11 +5,14 @@ import random
 import folder_paths
 import comfy.utils
 from .image import ImageExpandBatch
+from .utils import AnyType
 import numpy as np
 import scipy
 from PIL import Image
 from nodes import MAX_RESOLUTION
 import math
+
+any = AnyType("*")
 
 class MaskBlur:
     @classmethod
@@ -382,7 +385,7 @@ class MaskFromList:
                 "width": ("INT", { "default": 32, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
                 "height": ("INT", { "default": 32, "min": 0, "max": MAX_RESOLUTION, "step": 8, }),
             }, "optional": {
-                "values": ("INT,FLOAT", { "default": 0.0, "min": 0.0, "max": 1.0, }),
+                "values": (any, { "default": 0.0, "min": 0.0, "max": 1.0, }),
                 "str_values": ("STRING", { "default": "", "multiline": True, "placeholder": "0.0, 0.5, 1.0",}),
             }
         }
@@ -398,7 +401,7 @@ class MaskFromList:
             if not isinstance(values, list):
                 out = [values]
             else:
-                out.extend(values)
+                out.extend([float(v) for v in values])
 
         if str_values != "":
             str_values = [float(v) for v in str_values.split(",")]
