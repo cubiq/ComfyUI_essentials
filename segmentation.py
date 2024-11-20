@@ -48,7 +48,7 @@ class ApplyCLIPSeg:
         outputs = []
         for i in imagenp:
             inputs = processor(text=prompt, images=[i], return_tensors="pt")
-            out = model(**inputs)
+            out = model(**inputs, interpolate_pos_encoding=True)
             out = out.logits.unsqueeze(1)
             out = torch.sigmoid(out[0][0])
             out = (out > threshold)
