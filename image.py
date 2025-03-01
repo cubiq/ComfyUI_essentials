@@ -600,6 +600,12 @@ class ImageUntile:
 
     def execute(self, tiles, overlap_x, overlap_y, rows, cols):
         tile_h, tile_w = tiles.shape[1:3]
+
+        if rows == 1:
+            overlap_y = 0
+        if cols == 1:
+            overlap_x = 0
+
         tile_h -= overlap_y
         tile_w -= overlap_x
         out_w = cols * tile_w
@@ -632,15 +638,8 @@ class ImageUntile:
                 # feather the overlap on top
                 if i > 0:
                     mask[:, :overlap_y, :] *= torch.linspace(0, 1, overlap_y, device=tiles.device, dtype=tiles.dtype).unsqueeze(1)
-                # feather the overlap on bottom
-                #if i < rows - 1:
-                #    mask[:, -overlap_y:, :] *= torch.linspace(1, 0, overlap_y, device=tiles.device, dtype=tiles.dtype).unsqueeze(1)
-                # feather the overlap on left
                 if j > 0:
                     mask[:, :, :overlap_x] *= torch.linspace(0, 1, overlap_x, device=tiles.device, dtype=tiles.dtype).unsqueeze(0)
-                # feather the overlap on right
-                #if j < cols - 1:
-                #    mask[:, :, -overlap_x:] *= torch.linspace(1, 0, overlap_x, device=tiles.device, dtype=tiles.dtype).unsqueeze(0)
                 
                 mask = mask.unsqueeze(-1).repeat(1, 1, 1, tiles.shape[3])
                 tile = tiles[i * cols + j] * mask
