@@ -202,7 +202,7 @@ class MaskFromColor:
                 "red": ("INT", { "default": 255, "min": 0, "max": 255, "step": 1, }),
                 "green": ("INT", { "default": 255, "min": 0, "max": 255, "step": 1, }),
                 "blue": ("INT", { "default": 255, "min": 0, "max": 255, "step": 1, }),
-                "threshold": ("INT", { "default": 0, "min": 0, "max": 127, "step": 1, }),
+                "threshold": ("INT", { "default": 0, "min": 0, "max": 128, "step": 1, }),
             }
         }
 
