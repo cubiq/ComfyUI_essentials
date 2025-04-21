@@ -472,17 +472,21 @@ class SDXLEmptyLatentSizePicker:
             "batch_size": ("INT", {"default": 1, "min": 1, "max": 4096}),
             "width_override": ("INT", {"default": 0, "min": 0, "max": MAX_RESOLUTION, "step": 8}),
             "height_override": ("INT", {"default": 0, "min": 0, "max": MAX_RESOLUTION, "step": 8}),
+            "resolution_multiplier": ("FLOAT", {"default": 1, "min": 0, "max": 100, "step": 0.5}),
             }}
 
     RETURN_TYPES = ("LATENT","INT","INT",)
     RETURN_NAMES = ("LATENT","width","height",)
-    FUNCTION = "execute"
-    CATEGORY = "essentials/utilities"
+    FUNCTION     = "execute"
+    CATEGORY     = "essentials/utilities"
 
-    def execute(self, resolution, batch_size, width_override=0, height_override=0):
+    def execute(self, resolution, batch_size, width_override=0, height_override=0, resolution_multiplier=1.0):
         width, height = resolution.split(" ")[0].split("x")
-        width = width_override if width_override > 0 else int(width)
-        height = height_override if height_override > 0 else int(height)
+        width         = width_override  if width_override  > 0 else int(width)
+        height        = height_override if height_override > 0 else int(height)
+
+        width  = int(resolution_multiplier * width)
+        height = int(resolution_multiplier * height)
 
         latent = torch.zeros([batch_size, 4, height // 8, width // 8], device=self.device)
 
