@@ -21,6 +21,7 @@ class MaskBlur:
             "required": {
                 "mask": ("MASK",),
                 "amount": ("INT", { "default": 6, "min": 0, "max": 256, "step": 1, }),
+                "allow_growth": ("BOOLEAN", { "default": True }),
                 "device": (["auto", "cpu", "gpu"],),
             }
         }
@@ -29,7 +30,7 @@ class MaskBlur:
     FUNCTION = "execute"
     CATEGORY = "essentials/mask"
 
-    def execute(self, mask, amount, device):
+    def execute(self, mask, amount, allow_growth, device):
         if amount == 0:
             return (mask,)
 
@@ -37,6 +38,8 @@ class MaskBlur:
             mask = mask.to(comfy.model_management.get_torch_device())
         elif "cpu" == device:
             mask = mask.to('cpu')
+
+        mask_bin = (mask > 0)
 
         if amount % 2 == 0:
             amount+= 1
@@ -46,10 +49,13 @@ class MaskBlur:
 
         mask = T.functional.gaussian_blur(mask.unsqueeze(1), amount).squeeze(1)
 
+        if not allow_growth:
+            mask = mask * mask_bin
+
         if "gpu" == device or "cpu" == device:
             mask = mask.to(comfy.model_management.intermediate_device())
 
-        return(mask,)
+        return (mask, )
 
 class MaskFlip:
     @classmethod
