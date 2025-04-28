@@ -35,7 +35,7 @@ class KSamplerVariationsWithNoise:
         return {"required": {
                     "model": ("MODEL", ),
                     "latent_image": ("LATENT", ),
-                    "main_seed": ("INT:seed", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                    "main_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "tooltip": "The random seed used for creating the noise."}),
                     "steps": ("INT", {"default": 20, "min": 1, "max": 10000}),
                     "cfg": ("FLOAT", {"default": 8.0, "min": 0.0, "max": 100.0, "step":0.1, "round": 0.01}),
                     "sampler_name": (comfy.samplers.KSampler.SAMPLERS, ),
@@ -46,7 +46,7 @@ class KSamplerVariationsWithNoise:
                     #"start_at_step": ("INT", {"default": 0, "min": 0, "max": 10000}),
                     #"end_at_step": ("INT", {"default": 10000, "min": 0, "max": 10000}),
                     #"return_with_leftover_noise": (["disable", "enable"], ),
-                    "variation_seed": ("INT:seed", {"default": 12345, "min": 0, "max": 0xffffffffffffffff}),
+                    "variation_seed": ("INT", {"default": 12345, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "tooltip": "The random seed used for creating the noise."}),
                     "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step":0.01, "round": 0.01}),
                 }}
 
@@ -117,7 +117,7 @@ class KSamplerVariationsStochastic:
                     "scheduler": (comfy.samplers.KSampler.SCHEDULERS, ),
                     "positive": ("CONDITIONING", ),
                     "negative": ("CONDITIONING", ),
-                    "variation_seed": ("INT:seed", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                    "variation_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "tooltip": "The random seed used for creating the noise."}),
                     "variation_strength": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 1.0, "step":0.05, "round": 0.01}),
                     #"variation_sampler": (comfy.samplers.KSampler.SAMPLERS, ),
                     "cfg_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step":0.05, "round": 0.01}),
