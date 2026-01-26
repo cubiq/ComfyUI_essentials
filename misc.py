@@ -192,8 +192,8 @@ class SimpleMath:
         }
 
         def eval_(node):
-            if isinstance(node, ast.Num): # number
-                return node.n
+            if isinstance(node, ast.Constant): # number
+                return node.value
             elif isinstance(node, ast.Name): # variable
                 if node.id == "a":
                     return a
