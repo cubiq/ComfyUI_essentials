@@ -181,10 +181,15 @@ class MaskBoundingBox:
             mask = T.functional.gaussian_blur(mask.unsqueeze(1), blur).squeeze(1)
 
         _, y, x = torch.where(mask)
-        x1 = max(0, x.min().item() - padding)
-        x2 = min(mask.shape[2], x.max().item() + 1 + padding)
-        y1 = max(0, y.min().item() - padding)
-        y2 = min(mask.shape[1], y.max().item() + 1 + padding)
+
+        # handle empty mask gracefully
+        minx, maxx = (x.min().item(), x.max().item()) if x.numel() else (0, 0)
+        miny, maxy = (y.min().item(), y.max().item()) if y.numel() else (0, 0)
+
+        x1 = max(0, minx - padding)
+        x2 = min(mask.shape[2], maxx + 1 + padding)
+        y1 = max(0, miny - padding)
+        y2 = min(mask.shape[1], maxy + 1 + padding)
 
         # crop the mask
         mask = mask[:, y1:y2, x1:x2]
